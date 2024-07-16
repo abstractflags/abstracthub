@@ -1,1 +1,512 @@
-"local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()\r\n\r\nlocal AIMBOT_ON = false\r\nlocal AIMBOT_FOV = 150\r\nlocal AIMBOT_SMOOTHING = 50\r\nlocal AIMBOT_FOV_COLOR = Color3.fromRGB(255, 255, 255)\r\nlocal AIMBOT_BIND = Enum.UserInputType.MouseButton2\r\n\r\nlocal ESP_COLOR = Color3.fromRGB(255, 255, 255)\r\n\r\nlocal circle\r\n\r\nlocal camera = game.Workspace.CurrentCamera\r\nlocal localplayer = game:GetService(\"Players\").LocalPlayer\r\nlocal dist = math.huge\r\nlocal target = nil\r\nlocal aiming = false\r\n\r\nlocal UIS = game:GetService(\"UserInputService\")\r\n\r\n-- Skeleton ESP variables and functions\r\nlocal skeletonConnections = {}\r\nlocal skeletonDrawings = {}\r\nlocal ESPSkeletonToggle = {Value = false}\r\nlocal ESPColor = {Value = Color3.new(1, 1, 1)}\r\n\r\n-- Box ESP variables and functions\r\nlocal boxDrawings = {}\r\nlocal ESPBoxToggle = {Value = false}\r\n\r\nlocal function createBone()\r\n    local bone = Drawing.new(\"Line\")\r\n    bone.Visible = false\r\n    bone.Color = Color3.new(1, 1, 1)\r\n    bone.Thickness = 1\r\n    bone.Transparency = 1\r\n    return bone\r\nend\r\n\r\nlocal function updateBone(bone, from, to)\r\n    bone.From = from\r\n    bone.To = to\r\nend\r\n\r\nlocal function createSkeleton(player)\r\n    local character = player.Character\r\n    if not character then return end\r\n\r\n    local bones = {\r\n        createBone(), -- UpperTorso to LowerTorso\r\n        createBone(), -- LeftUpperArm to LeftLowerArm\r\n        createBone(), -- LeftLowerArm to LeftHand\r\n        createBone(), -- RightUpperArm to RightLowerArm\r\n        createBone(), -- RightLowerArm to RightHand\r\n        createBone(), -- LeftUpperLeg to LeftLowerLeg\r\n        createBone(), -- LeftLowerLeg to LeftFoot\r\n        createBone(), -- RightUpperLeg to RightLowerLeg\r\n        createBone(), -- RightLowerLeg to RightFoot\r\n    }\r\n\r\n    skeletonDrawings[player] = bones\r\n\r\n    local function updateSkeleton()\r\n        if not ESPSkeletonToggle.Value or not player.Character or not player.Character:FindFirstChild(\"HumanoidRootPart\") then\r\n            for _, bone in ipairs(bones) do\r\n                bone.Visible = false\r\n            end\r\n            return\r\n        end\r\n\r\n        local function updateBonePositions(bone, part1, part2)\r\n            if not part1 or not part2 then return end\r\n            local p1, vis1 = camera:WorldToViewportPoint(part1.Position)\r\n            local p2, vis2 = camera:WorldToViewportPoint(part2.Position)\r\n            \r\n            if vis1 and vis2 then\r\n                updateBone(bone, Vector2.new(p1.X, p1.Y), Vector2.new(p2.X, p2.Y))\r\n                bone.Visible = true\r\n            else\r\n                bone.Visible = false\r\n            end\r\n        end\r\n\r\n        updateBonePositions(bones[1], character:FindFirstChild(\"UpperTorso\"), character:FindFirstChild(\"LowerTorso\"))\r\n        updateBonePositions(bones[2], character:FindFirstChild(\"LeftUpperArm\"), character:FindFirstChild(\"LeftLowerArm\"))\r\n        updateBonePositions(bones[3], character:FindFirstChild(\"LeftLowerArm\"), character:FindFirstChild(\"LeftHand\"))\r\n        updateBonePositions(bones[4], character:FindFirstChild(\"RightUpperArm\"), character:FindFirstChild(\"RightLowerArm\"))\r\n        updateBonePositions(bones[5], character:FindFirstChild(\"RightLowerArm\"), character:FindFirstChild(\"RightHand\"))\r\n        updateBonePositions(bones[6], character:FindFirstChild(\"LeftUpperLeg\"), character:FindFirstChild(\"LeftLowerLeg\"))\r\n        updateBonePositions(bones[7], character:FindFirstChild(\"LeftLowerLeg\"), character:FindFirstChild(\"LeftFoot\"))\r\n        updateBonePositions(bones[8], character:FindFirstChild(\"RightUpperLeg\"), character:FindFirstChild(\"RightLowerLeg\"))\r\n        updateBonePositions(bones[9], character:FindFirstChild(\"RightLowerLeg\"), character:FindFirstChild(\"RightFoot\"))\r\n\r\n        for _, bone in ipairs(bones) do\r\n            bone.Color = ESP_COLOR\r\n        end\r\n    end\r\n\r\n    skeletonConnections[player] = game:GetService(\"RunService\").RenderStepped:Connect(updateSkeleton)\r\nend\r\n\r\nlocal function updateSkeleton(player, bones)\r\n    if not player.Character or not player.Character:FindFirstChild(\"HumanoidRootPart\") then\r\n        for _, bone in ipairs(bones) do\r\n            bone.Visible = false\r\n        end\r\n        return\r\n    end\r\n\r\n    local function updateBonePositions(bone, part1, part2)\r\n        if not part1 or not part2 then return end\r\n        local p1, vis1 = camera:WorldToViewportPoint(part1.Position)\r\n        local p2, vis2 = camera:WorldToViewportPoint(part2.Position)\r\n        \r\n        if vis1 and vis2 then\r\n            updateBone(bone, Vector2.new(p1.X, p1.Y), Vector2.new(p2.X, p2.Y))\r\n            bone.Visible = true\r\n        else\r\n            bone.Visible = false\r\n        end\r\n    end\r\n\r\n    -- Update bone positions (same as before)\r\n    updateBonePositions(bones[1], player.Character:FindFirstChild(\"UpperTorso\"), player.Character:FindFirstChild(\"LowerTorso\"))\r\n    -- ... (update other bones)\r\n\r\n    for _, bone in ipairs(bones) do\r\n        bone.Color = ESP_COLOR\r\n    end\r\nend\r\n\r\n\r\nlocal function createBox(player)\r\n    local box = Drawing.new(\"Square\")\r\n    box.Visible = false\r\n    box.Color = ESP_COLOR\r\n    box.Thickness = 1\r\n    box.Transparency = 1\r\n    box.Filled = false\r\n    boxDrawings[player] = box\r\n    return box\r\nend\r\n\r\n\r\nlocal function updateBox(player, box)\r\n    if not player or not player.Parent or not ESPBoxToggle.Value or not player.Character or not player.Character:FindFirstChild(\"HumanoidRootPart\") then\r\n        box.Visible = false\r\n        return\r\n    end\r\n\r\n    local rootPart = player.Character.HumanoidRootPart\r\n    local head = player.Character:FindFirstChild(\"Head\")\r\n    if not head then\r\n        box.Visible = false\r\n        return\r\n    end\r\n\r\n    local rootPos, rootVis = camera:WorldToViewportPoint(rootPart.Position)\r\n    if not rootVis then\r\n        box.Visible = false\r\n        return\r\n    end\r\n\r\n    local headPos = camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))\r\n    local legPos = camera:WorldToViewportPoint(rootPart.Position - Vector3.new(0, 3, 0))\r\n\r\n    box.Size = Vector2.new(2350 / rootPos.Z, headPos.Y - legPos.Y)\r\n    box.Position = Vector2.new(rootPos.X - box.Size.X / 2, rootPos.Y - box.Size.Y / 2)\r\n    box.Color = ESP_COLOR\r\n    box.Visible = true\r\nend\r\n\r\n\r\n\r\nlocal function removeSkeleton(player)\r\n    if skeletonConnections[player] then\r\n        skeletonConnections[player]:Disconnect()\r\n        skeletonConnections[player] = nil\r\n    end\r\n\r\n    if skeletonDrawings[player] then\r\n        for _, bone in ipairs(skeletonDrawings[player]) do\r\n            bone:Remove()\r\n        end\r\n        skeletonDrawings[player] = nil\r\n    end\r\nend\r\n\r\nlocal function removeBox(player)\r\n    if boxDrawings[player] then\r\n        boxDrawings[player]:Remove()\r\n        boxDrawings[player] = nil\r\n    end\r\nend\r\n\r\nlocal function playerAdded(player)\r\n    player.CharacterAdded:Connect(function()\r\n        createSkeleton(player)\r\n        createBox(player)\r\n    end)\r\n    player.CharacterRemoving:Connect(function()\r\n        removeSkeleton(player)\r\n        removeBox(player)\r\n    end)\r\n    if player.Character then\r\n        createSkeleton(player)\r\n        createBox(player)\r\n    end\r\nend\r\n\r\nlocal function playerRemoved(player)\r\n    removeSkeleton(player)\r\n    removeBox(player)\r\n    if boxDrawings[player] then\r\n        boxDrawings[player]:Remove()\r\n        boxDrawings[player] = nil\r\n    end\r\nend\r\n\r\n\r\nUIS.InputBegan:Connect(function(inp)\r\n    if inp.UserInputType == AIMBOT_BIND and AIMBOT_ON then\r\n        aiming = true\r\n    end\r\nend)\r\n\r\nUIS.InputEnded:Connect(function(inp)\r\n    if inp.UserInputType == AIMBOT_BIND then\r\n        aiming = false\r\n    end\r\nend)\r\n\r\nfunction closestplayer()\r\n    local closest = nil\r\n    local shortestDistance = math.huge\r\n    local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)\r\n\r\n    for _, player in pairs(game:GetService(\"Players\"):GetPlayers()) do\r\n        if player ~= localplayer and player.Character and player.Character:FindFirstChild(\"Head\") then\r\n            local vector, onScreen = camera:WorldToScreenPoint(player.Character.Head.Position)\r\n            if onScreen then\r\n                local vectorDistance = (Vector2.new(vector.X, vector.Y) - screenCenter).Magnitude\r\n                if vectorDistance \u003C shortestDistance and vectorDistance \u003C= AIMBOT_FOV then\r\n                    closest = player\r\n                    shortestDistance = vectorDistance\r\n                end\r\n            end\r\n        end\r\n    end\r\n\r\n    return closest\r\nend\r\n\r\nlocal Window = OrionLib:MakeWindow({\r\n    Name = \"AbstractHub\",\r\n    HidePremium = false,\r\n    IntroEnabled = true,\r\n    IntroText = \"AbstractHub by AbstractFlags\",\r\n    CloseCallback = function()\r\n        OrionLib:Destroy()\r\n        if circle then\r\n            circle:Remove()\r\n        end\r\n        AIMBOT_ON = false\r\n        -- Clean up Skeleton ESP and Box ESP\r\n        for _, player in ipairs(game:GetService(\"Players\"):GetPlayers()) do\r\n            removeSkeleton(player)\r\n            removeBox(player)\r\n        end\r\n    end\r\n})\r\n\r\nlocal AimbotTab = Window:MakeTab({\r\n    Name = \"Aimbot\"\r\n})\r\n\r\nlocal AimbotMain = AimbotTab:AddSection({\r\n    Name = \"Main\"\r\n})\r\n\r\nlocal AimbotToggle = AimbotMain:AddToggle({\r\n    Name = \"Aimbot\",\r\n    Default = false,\r\n    Callback = function(Value)\r\n        AIMBOT_ON = Value\r\n    end\r\n})\r\n\r\nAimbotMain:AddSlider({\r\n    Name = \"Smoothing\",\r\n    Min = 0,\r\n    Max = 100,\r\n    Default = 50,\r\n    Color = Color3.fromRGB(205, 125, 255),\r\n    Increment = 1,\r\n    ValueName = \"Smoothness\",\r\n    Callback = function(Value)\r\n        AIMBOT_SMOOTHING = Value / 100\r\n    end\r\n})\r\n\r\nlocal AimbotFOVSection = AimbotTab:AddSection({\r\n    Name = \"FOV\"\r\n})\r\n\r\nlocal FOVToggle = AimbotFOVSection:AddToggle({\r\n    Name = \"Show FOV\",\r\n    Default = false,\r\n    Callback = function(Value)\r\n        if Value then\r\n            circle = Drawing.new(\"Circle\")\r\n            circle.Visible = true\r\n            circle.Color = AIMBOT_FOV_COLOR\r\n            circle.Thickness = 1\r\n            circle.NumSides = 64\r\n            circle.Radius = AIMBOT_FOV\r\n            circle.Filled = false\r\n            circle.Transparency = 1\r\n        else\r\n            if circle then\r\n                circle:Remove()\r\n                circle = nil\r\n            end\r\n        end\r\n    end\r\n})\r\n\r\nAimbotFOVSection:AddSlider({\r\n    Name = \"FOV Radius\",\r\n    Min = 10,\r\n    Max = 500,\r\n    Default = 150,\r\n    Color = Color3.fromRGB(205, 125, 255),\r\n    Increment = 1,\r\n    ValueName = \"Radius\",\r\n    Callback = function(Value)\r\n        AIMBOT_FOV = Value\r\n        if circle then\r\n            circle.Radius = Value\r\n        end\r\n    end\r\n})\r\n\r\nlocal AimbotColorSection = AimbotTab:AddSection({\r\n    Name = \"Color\"\r\n})\r\n\r\nAimbotColorSection:AddColorpicker({\r\n    Name = \"FOV Color\",\r\n    Default = Color3.fromRGB(255, 255, 255),\r\n    Callback = function(Value)\r\n        AIMBOT_FOV_COLOR = Value\r\n        if circle then\r\n            circle.Color = Value\r\n        end\r\n    end\r\n})\r\n\r\nlocal ESPTab = Window:MakeTab({\r\n    Name = \"ESP\"\r\n})\r\n\r\nlocal ESPMain = ESPTab:AddSection({\r\n    Name = \"Main\"\r\n})\r\n\r\nlocal ESPBoxToggle = ESPMain:AddToggle({\r\n    Name = \"Box ESP\",\r\n    Default = false,\r\n    Callback = function(Value)\r\n        ESPBoxToggle.Value = Value\r\n        for player, box in pairs(boxDrawings) do\r\n            if player ~= localplayer then\r\n                if Value then\r\n                    updateBox(player, box)\r\n                else\r\n                    box.Visible = false\r\n                end\r\n            end\r\n        end\r\n    end\r\n})\r\n\r\n\r\n\r\n\r\nlocal ESPSkeletonToggle = ESPMain:AddToggle({\r\n    Name = \"Skeleton ESP\",\r\n    Default = false,\r\n    Callback = function(Value)\r\n        ESPSkeletonToggle.Value = Value\r\n        if Value then\r\n            for _, player in ipairs(game:GetService(\"Players\"):GetPlayers()) do\r\n                if player ~= localplayer then\r\n                    createSkeleton(player)\r\n                end\r\n            end\r\n            game:GetService(\"Players\").PlayerAdded:Connect(playerAdded)\r\n            game:GetService(\"Players\").PlayerRemoving:Connect(playerRemoved)\r\n        else\r\n            for _, player in ipairs(game:GetService(\"Players\"):GetPlayers()) do\r\n                removeSkeleton(player)\r\n            end\r\n            for _, connection in pairs(skeletonConnections) do\r\n                connection:Disconnect()\r\n            end\r\n            skeletonConnections = {}\r\n        end\r\n        \r\n        -- Clear Box ESP frames when toggling Skeleton ESP\r\n        if not ESPBoxToggle.Value then\r\n            for _, box in pairs(boxDrawings) do\r\n                box.Visible = false\r\n            end\r\n        end\r\n    end\r\n})\r\n\r\n\r\n\r\n\r\n\r\nlocal ESPColor = ESPTab:AddSection({\r\n    Name = \"Color\"\r\n})\r\n\r\nESPColor:AddColorpicker({\r\n    Name = \"ESP Color\",\r\n    Default = Color3.fromRGB(255, 255, 255),\r\n    Callback = function(Value)\r\n        ESP_COLOR = Value\r\n        for _, bones in pairs(skeletonDrawings) do\r\n            for _, bone in ipairs(bones) do\r\n                bone.Color = Value\r\n            end\r\n        end\r\n        for _, box in pairs(boxDrawings) do\r\n            box.Color = Value\r\n        end\r\n    end\r\n})\r\n\r\nlocal CreditsTab = Window:MakeTab({\r\n    Name = \"Credits\"\r\n})\r\n\r\nCreditsTab:AddLabel(\"AbstractHub Credits\")\r\nCreditsTab:AddParagraph(\"Main Programmer\", \"AbstractFlags\")\r\nCreditsTab:AddParagraph(\"Skeleton ESP Programmer\", \"Yazz\")\r\nCreditsTab:AddParagraph(\"UI Library\", \"Orion Library\")\r\nCreditsTab:AddParagraph(\"UI Library Creator\", \"Shlexware\")\r\n\r\nOrionLib:Init()\r\n\r\ngame:GetService(\"RunService\").RenderStepped:Connect(function()\r\n    if circle and circle.Visible then\r\n        circle.Position = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)\r\n    end\r\n    \r\n    for player, box in pairs(boxDrawings) do\r\n        if player and player.Parent and player ~= localplayer then\r\n            if ESPBoxToggle.Value then\r\n                updateBox(player, box)\r\n            else\r\n                box.Visible = false\r\n            end\r\n        else\r\n            box.Visible = false\r\n            boxDrawings[player] = nil\r\n        end\r\n    end\r\n\r\n    -- Update Skeleton ESP here if needed\r\n    if ESPSkeletonToggle.Value then\r\n        for player, bones in pairs(skeletonDrawings) do\r\n            if player and player.Parent and player ~= localplayer then\r\n                updateSkeleton(player, bones)\r\n            else\r\n                for _, bone in ipairs(bones) do\r\n                    bone.Visible = false\r\n                end\r\n                skeletonDrawings[player] = nil\r\n            end\r\n        end\r\n    end\r\nend)\r\n\r\n\r\n\r\n\r\ngame:GetService(\"RunService\").RenderStepped:Connect(function()\r\n    if AIMBOT_ON and aiming then\r\n        local target = closestplayer()\r\n        if target then\r\n            local targetPos = target.Character.Head.Position\r\n            local cameraPos = camera.CFrame.Position\r\n            local newCFrame = CFrame.new(cameraPos, targetPos)\r\n            \r\n            local smoothFactor = 1 - AIMBOT_SMOOTHING\r\n            camera.CFrame = camera.CFrame:Lerp(newCFrame, smoothFactor)\r\n        end\r\n    end\r\nend)\r\n\r\nfor _, player in ipairs(game:GetService(\"Players\"):GetPlayers()) do\r\n    if player ~= localplayer then\r\n        playerAdded(player)\r\n    end\r\nend\r\n\r\ngame:GetService(\"Players\").PlayerAdded:Connect(playerAdded)\r\ngame:GetService(\"Players\").PlayerRemoving:Connect(playerRemoved)"
+local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+
+local AIMBOT_ON = false
+local AIMBOT_FOV = 150
+local AIMBOT_SMOOTHING = 50
+local AIMBOT_FOV_COLOR = Color3.fromRGB(255, 255, 255)
+local AIMBOT_BIND = Enum.UserInputType.MouseButton2
+
+local ESP_COLOR = Color3.fromRGB(255, 255, 255)
+
+local circle
+
+local camera = game.Workspace.CurrentCamera
+local localplayer = game:GetService("Players").LocalPlayer
+local dist = math.huge
+local target = nil
+local aiming = false
+
+local UIS = game:GetService("UserInputService")
+
+-- Skeleton ESP variables and functions
+local skeletonConnections = {}
+local skeletonDrawings = {}
+local ESPSkeletonToggle = {Value = false}
+local ESPColor = {Value = Color3.new(1, 1, 1)}
+
+-- Box ESP variables and functions
+local boxDrawings = {}
+local ESPBoxToggle = {Value = false}
+
+local function createBone()
+    local bone = Drawing.new("Line")
+    bone.Visible = false
+    bone.Color = Color3.new(1, 1, 1)
+    bone.Thickness = 1
+    bone.Transparency = 1
+    return bone
+end
+
+local function updateBone(bone, from, to)
+    bone.From = from
+    bone.To = to
+end
+
+local function createSkeleton(player)
+    local character = player.Character
+    if not character then return end
+
+    local bones = {
+        createBone(), -- UpperTorso to LowerTorso
+        createBone(), -- LeftUpperArm to LeftLowerArm
+        createBone(), -- LeftLowerArm to LeftHand
+        createBone(), -- RightUpperArm to RightLowerArm
+        createBone(), -- RightLowerArm to RightHand
+        createBone(), -- LeftUpperLeg to LeftLowerLeg
+        createBone(), -- LeftLowerLeg to LeftFoot
+        createBone(), -- RightUpperLeg to RightLowerLeg
+        createBone(), -- RightLowerLeg to RightFoot
+    }
+
+    skeletonDrawings[player] = bones
+
+    local function updateSkeleton()
+        if not ESPSkeletonToggle.Value or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+            for _, bone in ipairs(bones) do
+                bone.Visible = false
+            end
+            return
+        end
+
+        local function updateBonePositions(bone, part1, part2)
+            if not part1 or not part2 then return end
+            local p1, vis1 = camera:WorldToViewportPoint(part1.Position)
+            local p2, vis2 = camera:WorldToViewportPoint(part2.Position)
+            
+            if vis1 and vis2 then
+                updateBone(bone, Vector2.new(p1.X, p1.Y), Vector2.new(p2.X, p2.Y))
+                bone.Visible = true
+            else
+                bone.Visible = false
+            end
+        end
+
+        updateBonePositions(bones[1], character:FindFirstChild("UpperTorso"), character:FindFirstChild("LowerTorso"))
+        updateBonePositions(bones[2], character:FindFirstChild("LeftUpperArm"), character:FindFirstChild("LeftLowerArm"))
+        updateBonePositions(bones[3], character:FindFirstChild("LeftLowerArm"), character:FindFirstChild("LeftHand"))
+        updateBonePositions(bones[4], character:FindFirstChild("RightUpperArm"), character:FindFirstChild("RightLowerArm"))
+        updateBonePositions(bones[5], character:FindFirstChild("RightLowerArm"), character:FindFirstChild("RightHand"))
+        updateBonePositions(bones[6], character:FindFirstChild("LeftUpperLeg"), character:FindFirstChild("LeftLowerLeg"))
+        updateBonePositions(bones[7], character:FindFirstChild("LeftLowerLeg"), character:FindFirstChild("LeftFoot"))
+        updateBonePositions(bones[8], character:FindFirstChild("RightUpperLeg"), character:FindFirstChild("RightLowerLeg"))
+        updateBonePositions(bones[9], character:FindFirstChild("RightLowerLeg"), character:FindFirstChild("RightFoot"))
+
+        for _, bone in ipairs(bones) do
+            bone.Color = ESP_COLOR
+        end
+    end
+
+    skeletonConnections[player] = game:GetService("RunService").RenderStepped:Connect(updateSkeleton)
+end
+
+local function updateSkeleton(player, bones)
+    if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+        for _, bone in ipairs(bones) do
+            bone.Visible = false
+        end
+        return
+    end
+
+    local function updateBonePositions(bone, part1, part2)
+        if not part1 or not part2 then return end
+        local p1, vis1 = camera:WorldToViewportPoint(part1.Position)
+        local p2, vis2 = camera:WorldToViewportPoint(part2.Position)
+        
+        if vis1 and vis2 then
+            updateBone(bone, Vector2.new(p1.X, p1.Y), Vector2.new(p2.X, p2.Y))
+            bone.Visible = true
+        else
+            bone.Visible = false
+        end
+    end
+
+    -- Update bone positions (same as before)
+    updateBonePositions(bones[1], player.Character:FindFirstChild("UpperTorso"), player.Character:FindFirstChild("LowerTorso"))
+    -- ... (update other bones)
+
+    for _, bone in ipairs(bones) do
+        bone.Color = ESP_COLOR
+    end
+end
+
+
+local function createBox(player)
+    local box = Drawing.new("Square")
+    box.Visible = false
+    box.Color = ESP_COLOR
+    box.Thickness = 1
+    box.Transparency = 1
+    box.Filled = false
+    boxDrawings[player] = box
+    return box
+end
+
+
+local function updateBox(player, box)
+    if not player or not player.Parent or not ESPBoxToggle.Value or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+        box.Visible = false
+        return
+    end
+
+    local rootPart = player.Character.HumanoidRootPart
+    local head = player.Character:FindFirstChild("Head")
+    if not head then
+        box.Visible = false
+        return
+    end
+
+    local rootPos, rootVis = camera:WorldToViewportPoint(rootPart.Position)
+    if not rootVis then
+        box.Visible = false
+        return
+    end
+
+    local headPos = camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
+    local legPos = camera:WorldToViewportPoint(rootPart.Position - Vector3.new(0, 3, 0))
+
+    box.Size = Vector2.new(2350 / rootPos.Z, headPos.Y - legPos.Y)
+    box.Position = Vector2.new(rootPos.X - box.Size.X / 2, rootPos.Y - box.Size.Y / 2)
+    box.Color = ESP_COLOR
+    box.Visible = true
+end
+
+
+
+local function removeSkeleton(player)
+    if skeletonConnections[player] then
+        skeletonConnections[player]:Disconnect()
+        skeletonConnections[player] = nil
+    end
+
+    if skeletonDrawings[player] then
+        for _, bone in ipairs(skeletonDrawings[player]) do
+            bone:Remove()
+        end
+        skeletonDrawings[player] = nil
+    end
+end
+
+local function removeBox(player)
+    if boxDrawings[player] then
+        boxDrawings[player]:Remove()
+        boxDrawings[player] = nil
+    end
+end
+
+local function playerAdded(player)
+    player.CharacterAdded:Connect(function()
+        createSkeleton(player)
+        createBox(player)
+    end)
+    player.CharacterRemoving:Connect(function()
+        removeSkeleton(player)
+        removeBox(player)
+    end)
+    if player.Character then
+        createSkeleton(player)
+        createBox(player)
+    end
+end
+
+local function playerRemoved(player)
+    removeSkeleton(player)
+    removeBox(player)
+    if boxDrawings[player] then
+        boxDrawings[player]:Remove()
+        boxDrawings[player] = nil
+    end
+end
+
+
+UIS.InputBegan:Connect(function(inp)
+    if inp.UserInputType == AIMBOT_BIND and AIMBOT_ON then
+        aiming = true
+    end
+end)
+
+UIS.InputEnded:Connect(function(inp)
+    if inp.UserInputType == AIMBOT_BIND then
+        aiming = false
+    end
+end)
+
+function closestplayer()
+    local closest = nil
+    local shortestDistance = math.huge
+    local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+
+    for _, player in pairs(game:GetService("Players"):GetPlayers()) do
+        if player ~= localplayer and player.Character and player.Character:FindFirstChild("Head") then
+            local vector, onScreen = camera:WorldToScreenPoint(player.Character.Head.Position)
+            if onScreen then
+                local vectorDistance = (Vector2.new(vector.X, vector.Y) - screenCenter).Magnitude
+                if vectorDistance < shortestDistance and vectorDistance <= AIMBOT_FOV then
+                    closest = player
+                    shortestDistance = vectorDistance
+                end
+            end
+        end
+    end
+
+    return closest
+end
+
+local Window = OrionLib:MakeWindow({
+    Name = "AbstractHub",
+    HidePremium = false,
+    IntroEnabled = true,
+    IntroText = "AbstractHub by AbstractFlags",
+    CloseCallback = function()
+        OrionLib:Destroy()
+        if circle then
+            circle:Remove()
+        end
+        AIMBOT_ON = false
+        -- Clean up Skeleton ESP and Box ESP
+        for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
+            removeSkeleton(player)
+            removeBox(player)
+        end
+    end
+})
+
+local AimbotTab = Window:MakeTab({
+    Name = "Aimbot"
+})
+
+local AimbotMain = AimbotTab:AddSection({
+    Name = "Main"
+})
+
+local AimbotToggle = AimbotMain:AddToggle({
+    Name = "Aimbot",
+    Default = false,
+    Callback = function(Value)
+        AIMBOT_ON = Value
+    end
+})
+
+AimbotMain:AddSlider({
+    Name = "Smoothing",
+    Min = 0,
+    Max = 100,
+    Default = 50,
+    Color = Color3.fromRGB(205, 125, 255),
+    Increment = 1,
+    ValueName = "Smoothness",
+    Callback = function(Value)
+        AIMBOT_SMOOTHING = Value / 100
+    end
+})
+
+local AimbotFOVSection = AimbotTab:AddSection({
+    Name = "FOV"
+})
+
+local FOVToggle = AimbotFOVSection:AddToggle({
+    Name = "Show FOV",
+    Default = false,
+    Callback = function(Value)
+        if Value then
+            circle = Drawing.new("Circle")
+            circle.Visible = true
+            circle.Color = AIMBOT_FOV_COLOR
+            circle.Thickness = 1
+            circle.NumSides = 64
+            circle.Radius = AIMBOT_FOV
+            circle.Filled = false
+            circle.Transparency = 1
+        else
+            if circle then
+                circle:Remove()
+                circle = nil
+            end
+        end
+    end
+})
+
+AimbotFOVSection:AddSlider({
+    Name = "FOV Radius",
+    Min = 10,
+    Max = 500,
+    Default = 150,
+    Color = Color3.fromRGB(205, 125, 255),
+    Increment = 1,
+    ValueName = "Radius",
+    Callback = function(Value)
+        AIMBOT_FOV = Value
+        if circle then
+            circle.Radius = Value
+        end
+    end
+})
+
+local AimbotColorSection = AimbotTab:AddSection({
+    Name = "Color"
+})
+
+AimbotColorSection:AddColorpicker({
+    Name = "FOV Color",
+    Default = Color3.fromRGB(255, 255, 255),
+    Callback = function(Value)
+        AIMBOT_FOV_COLOR = Value
+        if circle then
+            circle.Color = Value
+        end
+    end
+})
+
+local ESPTab = Window:MakeTab({
+    Name = "ESP"
+})
+
+local ESPMain = ESPTab:AddSection({
+    Name = "Main"
+})
+
+local ESPBoxToggle = ESPMain:AddToggle({
+    Name = "Box ESP",
+    Default = false,
+    Callback = function(Value)
+        ESPBoxToggle.Value = Value
+        for player, box in pairs(boxDrawings) do
+            if player ~= localplayer then
+                if Value then
+                    updateBox(player, box)
+                else
+                    box.Visible = false
+                end
+            end
+        end
+    end
+})
+
+
+
+
+local ESPSkeletonToggle = ESPMain:AddToggle({
+    Name = "Skeleton ESP",
+    Default = false,
+    Callback = function(Value)
+        ESPSkeletonToggle.Value = Value
+        if Value then
+            for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
+                if player ~= localplayer then
+                    createSkeleton(player)
+                end
+            end
+            game:GetService("Players").PlayerAdded:Connect(playerAdded)
+            game:GetService("Players").PlayerRemoving:Connect(playerRemoved)
+        else
+            for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
+                removeSkeleton(player)
+            end
+            for _, connection in pairs(skeletonConnections) do
+                connection:Disconnect()
+            end
+            skeletonConnections = {}
+        end
+        
+        -- Clear Box ESP frames when toggling Skeleton ESP
+        if not ESPBoxToggle.Value then
+            for _, box in pairs(boxDrawings) do
+                box.Visible = false
+            end
+        end
+    end
+})
+
+
+
+
+
+local ESPColor = ESPTab:AddSection({
+    Name = "Color"
+})
+
+ESPColor:AddColorpicker({
+    Name = "ESP Color",
+    Default = Color3.fromRGB(255, 255, 255),
+    Callback = function(Value)
+        ESP_COLOR = Value
+        for _, bones in pairs(skeletonDrawings) do
+            for _, bone in ipairs(bones) do
+                bone.Color = Value
+            end
+        end
+        for _, box in pairs(boxDrawings) do
+            box.Color = Value
+        end
+    end
+})
+
+local CreditsTab = Window:MakeTab({
+    Name = "Credits"
+})
+
+CreditsTab:AddLabel("AbstractHub Credits")
+CreditsTab:AddParagraph("Main Programmer", "AbstractFlags")
+CreditsTab:AddParagraph("Skeleton ESP Programmer", "Yazz")
+CreditsTab:AddParagraph("UI Library", "Orion Library")
+CreditsTab:AddParagraph("UI Library Creator", "Shlexware")
+
+OrionLib:Init()
+
+game:GetService("RunService").RenderStepped:Connect(function()
+    if circle and circle.Visible then
+        circle.Position = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+    end
+    
+    for player, box in pairs(boxDrawings) do
+        if player and player.Parent and player ~= localplayer then
+            if ESPBoxToggle.Value then
+                updateBox(player, box)
+            else
+                box.Visible = false
+            end
+        else
+            box.Visible = false
+            boxDrawings[player] = nil
+        end
+    end
+
+    -- Update Skeleton ESP here if needed
+    if ESPSkeletonToggle.Value then
+        for player, bones in pairs(skeletonDrawings) do
+            if player and player.Parent and player ~= localplayer then
+                updateSkeleton(player, bones)
+            else
+                for _, bone in ipairs(bones) do
+                    bone.Visible = false
+                end
+                skeletonDrawings[player] = nil
+            end
+        end
+    end
+end)
+
+
+
+
+game:GetService("RunService").RenderStepped:Connect(function()
+    if AIMBOT_ON and aiming then
+        local target = closestplayer()
+        if target then
+            local targetPos = target.Character.Head.Position
+            local cameraPos = camera.CFrame.Position
+            local newCFrame = CFrame.new(cameraPos, targetPos)
+            
+            local smoothFactor = 1 - AIMBOT_SMOOTHING
+            camera.CFrame = camera.CFrame:Lerp(newCFrame, smoothFactor)
+        end
+    end
+end)
+
+for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
+    if player ~= localplayer then
+        playerAdded(player)
+    end
+end
+
+game:GetService("Players").PlayerAdded:Connect(playerAdded)
+game:GetService("Players").PlayerRemoving:Connect(playerRemoved)

@@ -6,6 +6,9 @@ local AIMBOT_SMOOTHING = 50
 local AIMBOT_FOV_COLOR = Color3.fromRGB(255, 255, 255)
 local AIMBOT_BIND = Enum.UserInputType.MouseButton2
 
+local TRIGGERBOT_ON = false
+local TRIGGERBOT_DELAY = 0.1
+
 local ESP_COLOR = Color3.fromRGB(255, 255, 255)
 
 local circle
@@ -240,9 +243,14 @@ function closestplayer()
             local vector, onScreen = camera:WorldToScreenPoint(player.Character.Head.Position)
             if onScreen then
                 local vectorDistance = (Vector2.new(vector.X, vector.Y) - screenCenter).Magnitude
-                if vectorDistance < shortestDistance and vectorDistance <= AIMBOT_FOV then
+                local playerDistance = (player.Character.Head.Position - localplayer.Character.Head.Position).Magnitude
+                
+                -- Combine both distances (you can adjust the weights if needed)
+                local combinedDistance = (vectorDistance * 0.40) + (playerDistance * 0.60)
+                
+                if combinedDistance < shortestDistance and vectorDistance <= AIMBOT_FOV then
                     closest = player
-                    shortestDistance = vectorDistance
+                    shortestDistance = combinedDistance
                 end
             end
         end
@@ -251,11 +259,12 @@ function closestplayer()
     return closest
 end
 
+
 local Window = OrionLib:MakeWindow({
-    Name = "AbstractHub",
+    Name = "AbstractHub v0.3.0",
     HidePremium = false,
     IntroEnabled = true,
-    IntroText = "AbstractHub by AbstractFlags",
+    IntroText = "Loading AbstractHub... ( version 0.3.0 )",
     CloseCallback = function()
         OrionLib:Destroy()
         if circle then
@@ -267,6 +276,7 @@ local Window = OrionLib:MakeWindow({
             removeSkeleton(player)
             removeBox(player)
         end
+        TRIGGERBOT_ON = false
     end
 })
 
@@ -440,6 +450,40 @@ ESPColor:AddColorpicker({
     end
 })
 
+local TriggerbotTab = Window:MakeTab({
+    Name = "Triggerbot"
+})
+
+local TriggerbotToggle = TriggerbotTab:AddToggle({
+    Name = "Triggerbot",
+    Default = false,
+    Callback = function(Value)
+        TRIGGERBOT_ON = Value
+    end
+})
+
+TriggerbotTab:AddSlider({
+    Name = "Delay",
+    Min = 0,
+    Max = 1,
+    Default = 0.1,
+    Color = Color3.fromRGB(205, 125, 255),
+    Increment = 0.01,
+    ValueName = "seconds",
+    Callback = function(Value)
+        TRIGGERBOT_DELAY = Value
+    end
+})
+
+TriggerbotTab:AddParagraph("Notice", "On Solara (and possibly other executors), you must click again after the triggerbot fires in order to stop it from continually clicking. I am trying to fix this and will likely be fixed in v0.3.1.")
+
+local InfoTab = Window:MakeTab({
+    Name = "Info"
+})
+
+InfoTab:AddParagraph("Version", "v0.3.0")
+InfoTab:AddLabel("More info coming soon!")
+
 local CreditsTab = Window:MakeTab({
     Name = "Credits"
 })
@@ -485,9 +529,6 @@ game:GetService("RunService").RenderStepped:Connect(function()
     end
 end)
 
-
-
-
 game:GetService("RunService").RenderStepped:Connect(function()
     if AIMBOT_ON and aiming then
         local target = closestplayer()
@@ -498,6 +539,20 @@ game:GetService("RunService").RenderStepped:Connect(function()
             
             local smoothFactor = 1 - AIMBOT_SMOOTHING
             camera.CFrame = camera.CFrame:Lerp(newCFrame, smoothFactor)
+        end
+    end
+
+    if TRIGGERBOT_ON then
+        local mouse = game.Players.LocalPlayer:GetMouse()
+        local target = mouse.target
+        if target and target.Parent and target.Parent:FindFirstChild("Humanoid") then
+            local player = game.Players:GetPlayerFromCharacter(target.Parent)
+            if player and player ~= localplayer then
+                task.wait(TRIGGERBOT_DELAY)
+                mouse1press();
+                task.wait(0.1)
+                mouse1release();
+            end
         end
     end
 end)

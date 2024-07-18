@@ -11,8 +11,11 @@ local TRIGGERBOT_DELAY = 0.1
 
 local SPINBOT_SPEED = 10
 
-local spinConnection
-local spinAngle = 0
+local horizSpinConnection
+local horizSpinAngle = 0
+
+local vertSpinConnection
+local vertSpinAngle = 0
 
 local ESP_COLOR = Color3.fromRGB(255, 255, 255) 
 
@@ -29,6 +32,8 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local originalY = humanoidRootPart.Position.Y
+
 
 local UIS = game:GetService("UserInputService")
 
@@ -271,27 +276,52 @@ function closestplayer()
 end
 
 
-local function spin(deltaTime)
+local function spinhoriz(deltaTime)
     if type(SPIN_SPEED) ~= "number" then
         warn("SPIN_SPEED is not a number. Setting to default value of 10.")
         SPIN_SPEED = 10
     end
 
-    spinAngle = spinAngle + math.rad(SPIN_SPEED)
+    horizSpinAngle = horizSpinAngle + math.rad(SPIN_SPEED)
     
     local currentPosition = humanoidRootPart.Position
     local lookVector = humanoidRootPart.CFrame.LookVector
     
-    local newCFrame = CFrame.new(currentPosition, currentPosition + lookVector) * CFrame.Angles(0, spinAngle, 0)
+    local newCFrame = CFrame.new(currentPosition, currentPosition + lookVector) * CFrame.Angles(0, horizSpinAngle, 0)
+    
+    humanoidRootPart.CFrame = newCFrame
+end
+
+local function spinvert(deltaTime)
+    originalY = humanoidRootPart.Position.Y
+
+    if type(SPIN_SPEED) ~= "number" then
+        warn("SPIN_SPEED is not a number. Setting to default value of 10.")
+        SPIN_SPEED = 10
+    end
+
+    vertSpinAngle = vertSpinAngle + math.rad(SPIN_SPEED * deltaTime * 60) -- Frame rate independence
+    
+    local currentPosition = humanoidRootPart.Position
+    local lookVector = humanoidRootPart.CFrame.LookVector
+    
+    -- Create rotation CFrame
+    local rotationCF = CFrame.Angles(vertSpinAngle, 0, 0)
+    
+    -- Apply rotation while preserving original height
+    local newCFrame = CFrame.new(currentPosition.X, originalY, currentPosition.Z) * rotationCF
+    
+    -- Preserve look direction
+    newCFrame = newCFrame * CFrame.new(Vector3.new(0, 0, -1), lookVector)
     
     humanoidRootPart.CFrame = newCFrame
 end
 
 local Window = OrionLib:MakeWindow({
-    Name = "AbstractHub v0.5.0",
+    Name = "AbstractHub v0.6.0",
     HidePremium = false,
     IntroEnabled = true,
-    IntroText = "Loading AbstractHub... ( version 0.5.0 )",
+    IntroText = "Loading AbstractHub... ( version 0.6.0 )",
     Icon = "rbxassetid://18540617874",
     IntroIcon = "rbxassetid://18540617874",
     CloseCallback = function()
@@ -520,19 +550,37 @@ local SpinbotSection = MiscTab:AddSection({
 })
 
 SpinbotSection:AddToggle({
-    Name = "Spinbot",
+    Name = "Horizontal Spinbot",
     Default = false,
     Callback = function(Value)
         if Value then
-            if not spinConnection then
-                spinConnection = game:GetService("RunService").Heartbeat:Connect(spin)
+            if not horizSpinConnection then
+                horizSpinConnection = game:GetService("RunService").Heartbeat:Connect(spinhoriz)
             end
         else
-            if spinConnection then
-                spinConnection:Disconnect()
-                spinConnection = nil
+            if horizSpinConnection then
+                horizSpinConnection:Disconnect()
+                horizSpinConnection = nil
             end
-            spinAngle = 0
+            horizSpinAngle = 0
+        end
+    end
+})
+
+SpinbotSection:AddToggle({
+    Name = "Vertical Spinbot",
+    Default = false,
+    Callback = function(Value)
+        if Value then
+            if not vertSpinConnection then
+                vertSpinConnection = game:GetService("RunService").Heartbeat:Connect(spinvert)
+            end
+        else
+            if vertSpinConnection then
+                vertSpinConnection:Disconnect()
+                vertSpinConnection = nil
+            end
+            vertSpinAngle = 0
         end
     end
 })
@@ -548,6 +596,59 @@ SpinbotSection:AddSlider({
         SPINBOT_SPEED = Value
     end
 })
+
+local BypassSection = MiscTab:AddSection({
+    Name = "Filter Bypass"
+})
+
+local function bypassString(inputText)
+    local normalChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz"
+    local stylizedChars = "🅰🅱🅲🅳🅴🅵🅶🅷🅸🅹🅺🅻🅼🅽🅾🅿🆀🆁🆂🆃🆄🆅🆆🆇🆈🆉 🅰🅱🅲🅳🅴🅵🅶🅷🅸🅹🅺🅻🅼🅽🅾🅿🆀🆁🆂🆃🆄🆅🆆🆇🆈🆉"
+    
+    local result = ""
+    
+    for i = 1, #inputText do
+        local char = inputText:sub(i, i)
+        local index = normalChars:find(char, 1, true)
+        
+        if index then
+            result = result .. stylizedChars:sub(index, index)
+        else
+            result = result .. char
+        end
+    end
+    
+    return result
+end
+
+BypassSection:AddTextbox({
+    Name = "Text",
+    TextDisappear = true,
+    Callback = function(Value)
+        local bypassed = bypassString(Value)
+        
+        if setclipboard then
+            setclipboard(bypassed);
+        else
+            OrionLib:MakeNotification({
+                Name = "Failed",
+                Content = "Copying to clipboard is not supported by " .. identifyexecutor(),
+                Image = "rbxassetid://18540617874",
+                Time = 5
+            })
+        end
+
+        OrionLib:MakeNotification({
+            Name = "Copied",
+            Content = "Bypassed text copied to clipboard!",
+            Image = "rbxassetid://18540617874",
+            Time = 5
+        })
+    end      
+})
+
+BypassSection:AddParagraph("Notice", "If it is not copying to clipboard, your executor does not support it. An alternative will be added in the future.")
+
 
 local CreditsTab = Window:MakeTab({
     Name = "Credits"
@@ -630,7 +731,7 @@ game:GetService("Players").PlayerAdded:Connect(playerAdded)
 game:GetService("Players").PlayerRemoving:Connect(playerRemoved)
 
 OrionLib:MakeNotification({
-    Name = "Welcome to AbstractHub! [ v0.5.0 ]",
+    Name = "Welcome to AbstractHub! [ v0.6.0 ]",
     Content = "Join our Discord! [ .gg/kMDWV94sTP ]",
     Image = "rbxassetid://18540617874",
     Time = 5

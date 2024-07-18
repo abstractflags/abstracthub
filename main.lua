@@ -554,7 +554,7 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local gameInfo = MarketplaceService:GetProductInfo(game.PlaceId)
 local gameName = gameInfo.Name
 
-InfoTab:AddParagraph("Version", ABSTRACTHUB_VERSION)
+InfoTab:AddParagraph("Version", ACEWARE_VERSION)
 InfoTab:AddParagraph("Executor", identifyexecutor())
 InfoTab:AddParagraph("Game", gameName)
 InfoTab:AddParagraph("Game ID", game.placeId)
@@ -843,7 +843,7 @@ TriggerbotTab:AddSlider({
     end
 })
 
-TriggerbotTab:AddParagraph("Notice", "AbstractHub triggerbot is currently extremely buggy. On Solara, you need to click again after the triggerbot fires or it will continue to fire.")
+TriggerbotTab:AddParagraph("Notice", "Aceware triggerbot is currently extremely buggy. On Solara, you need to click again after the triggerbot fires or it will continue to fire.")
 
 local MoveTab = Window:MakeTab({
     Name = "Movement"

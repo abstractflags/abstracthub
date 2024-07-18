@@ -1065,7 +1065,7 @@ local CreditsTab = Window:MakeTab({
 })
 
 CreditsTab:AddLabel("Aceware Credits")
-CreditsTab:AddParagraph("Main Programmer", "Lilaf")
+CreditsTab:AddParagraph("Main Programmer", "Lilaf / AbstractFlags")
 CreditsTab:AddParagraph("Skeleton ESP Programmer", "Yazz")
 CreditsTab:AddParagraph("UI Library", "Orion Library")
 CreditsTab:AddParagraph("UI Library Creator", "Shlexware")

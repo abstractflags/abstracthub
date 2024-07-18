@@ -1,6 +1,6 @@
 print("Injecting AbstractHub...")
 
-local ABSTRACTHUB_VERSION = "0.8.0"
+local ABSTRACTHUB_VERSION = "0.9.0"
 
 print("Version is " .. ABSTRACTHUB_VERSION)
 
@@ -20,6 +20,12 @@ local SPINBOT_SPEED = 10
 local BHOP_ON = false
 
 local CHAMS_ON = false
+
+local FLY_ON = false
+
+local FPS_ON = true
+
+local PING_ON = true
 
 local horizSpinConnection
 local horizSpinAngle = 0
@@ -41,11 +47,13 @@ local Players = game:GetService("Players")
 
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
 local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 local originalY = humanoidRootPart.Position.Y
 
 
 local UIS = game:GetService("UserInputService")
+local RS = game:GetService("RunService")
 
 -- Skeleton ESP variables and functions
 local skeletonConnections = {}
@@ -329,7 +337,6 @@ end
 
 local function checkForBhop()
     if character then
-        local humanoid = character:FindFirstChildOfClass("Humanoid")
         if humanoid and humanoid:GetState() == Enum.HumanoidStateType.Running then
             humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
         end
@@ -395,6 +402,119 @@ for _, player in ipairs(Players:GetPlayers()) do
     onPlayerAdded(player)
 end
 
+local connection
+function fly(delta)
+    if not character:IsDescendantOf(workspace) or not humanoid.Health > 0 then return end
+    
+    local moveDirection = Vector3.new()
+    local cameraCFrame = workspace.CurrentCamera.CFrame
+    
+    if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+        moveDirection = moveDirection + cameraCFrame.LookVector
+    end
+    if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+        moveDirection = moveDirection - cameraCFrame.LookVector
+    end
+    if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+        moveDirection = moveDirection - cameraCFrame.RightVector
+    end
+    if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+        moveDirection = moveDirection + cameraCFrame.RightVector
+    end
+    if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+        moveDirection = moveDirection + Vector3.new(0, 1, 0)
+    end
+    if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+        moveDirection = moveDirection - Vector3.new(0, 1, 0)
+    end
+    
+    if moveDirection.Magnitude > 0 then
+        moveDirection = moveDirection.Unit
+    end
+    
+    rootPart.Velocity = moveDirection * flySpeed
+end
+
+-- FPS COUNTER
+
+local ScreenGui = Instance.new("ScreenGui")
+local TextLabel = Instance.new("TextLabel")
+
+-- Set up the ScreenGui
+ScreenGui.Parent = game.CoreGui
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- Set up the TextLabel
+TextLabel.Parent = ScreenGui
+TextLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+TextLabel.BackgroundTransparency = 0.5
+TextLabel.Position = UDim2.new(0, 10, 0, 10)
+TextLabel.Size = UDim2.new(0, 100, 0, 20)
+TextLabel.Font = Enum.Font.SourceSans
+TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TextLabel.TextSize = 14
+TextLabel.TextXAlignment = Enum.TextXAlignment.Center
+
+local frameCount = 0
+local lastTime = tick()
+
+RS.RenderStepped:Connect(function()
+    frameCount = frameCount + 1
+    local currentTime = tick()
+    
+    if currentTime - lastTime >= 1 then
+        if FPS_ON then
+            TextLabel.Text = tostring(frameCount) .. " FPS"
+            TextLabel.Transparency = 0
+            TextLabel.BackgroundTransparency = 0.5
+        else
+            TextLabel.Transparency = 1
+        end
+        frameCount = 0
+        lastTime = currentTime
+    end
+end)
+
+RS.Heartbeat:Connect(function()
+    if tick() - lastIteration >= 0.1 then
+        updateFPS()
+        lastIteration = tick()
+    end
+end)
+
+-- PING COUNTER
+
+local pingGui = Instance.new("ScreenGui")
+local pingLabel = Instance.new("TextLabel")
+
+pingGui.Name = "PingDisplay"
+pingGui.Parent = game.CoreGui
+
+pingLabel.Name = "PingLabel"
+pingLabel.Parent = pingGui
+pingLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+pingLabel.BackgroundTransparency = 0.5
+pingLabel.Position = UDim2.new(0, 10, 1, -10)
+pingLabel.Size = UDim2.new(0, 100, 0, 20)
+pingLabel.Font = Enum.Font.SourceSans
+pingLabel.Text = "inf ms"
+pingLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+pingLabel.TextSize = 14
+
+local Stats = game:GetService("Stats")
+
+game:GetService("RunService").RenderStepped:Connect(function()
+    local ping = math.round(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+    if PING_ON then
+        pingLabel.Text = tostring(ping) .. " ms"
+        pingLabel.Transparency = 0
+        pingLabel.BackgroundTransparency = 0.5
+    else
+        pingLabel.Transparency = 1
+    end
+end)
+
+
 
 local Window = OrionLib:MakeWindow({
     Name = "AbstractHub v" .. ABSTRACTHUB_VERSION,
@@ -420,6 +540,9 @@ local Window = OrionLib:MakeWindow({
         end
         BHOP_ON = false
         CHAMS_ON = false
+        FLY_ON = false
+        FPS_ON = false
+        PING_ON = false
     end
 })
 
@@ -435,7 +558,83 @@ InfoTab:AddParagraph("Version", ABSTRACTHUB_VERSION)
 InfoTab:AddParagraph("Executor", identifyexecutor())
 InfoTab:AddParagraph("Game", gameName)
 InfoTab:AddParagraph("Game ID", game.placeId)
+InfoTab:AddParagraph("AbstractHub Support Discord", "discord.gg/kMDWV94sTP")
 
+local UITab = Window:MakeTab({
+    Name = "UI"
+})
+
+local FPSCounterSection = UITab:AddSection({
+    Name = "FPS Counter"
+})
+
+FPSCounterSection:AddToggle({
+    Name = "FPS Counter",
+    Default = true,
+    Callback = function(Value)
+        FPS_ON = Value
+    end
+})
+
+FPSCounterSection:AddDropdown({
+    Name = "Position",
+    Default = "Top Left",
+    Options = {"Top Left", "Bottom Left", "Top Right", "Bottom Right"},
+    Callback = function(Value)
+        if Value == "Top Left" then
+            TextLabel.AnchorPoint = Vector2.new(0, 0)
+            TextLabel.Position = UDim2.new(0, 10, 0, 10)
+        end
+        if Value == "Bottom Left" then
+            TextLabel.AnchorPoint = Vector2.new(0, 1)
+            TextLabel.Position = UDim2.new(0, 10, 1, -10)
+        end
+        if Value == "Top Right" then
+            TextLabel.AnchorPoint = Vector2.new(1, 0)
+            TextLabel.Position = UDim2.new(1, -10, 0, 10)
+        end
+        if Value == "Bottom Right" then
+            TextLabel.AnchorPoint = Vector2.new(1, 1)
+            TextLabel.Position = UDim2.new(1, -10, 1, -10)
+        end
+    end
+})
+
+local PingCounterSection = UITab:AddSection({
+    Name = "Ping Counter"
+})
+
+PingCounterSection:AddToggle({
+    Name = "Ping Counter",
+    Default = true,
+    Callback = function(Value)
+        PING_ON = Value
+    end
+})
+
+PingCounterSection:AddDropdown({
+    Name = "Position",
+    Default = "Bottom Left",
+    Options = {"Top Left", "Bottom Left", "Top Right", "Bottom Right"},
+    Callback = function(Value)
+        if Value == "Top Left" then
+            pingLabel.AnchorPoint = Vector2.new(0, 0)
+            pingLabel.Position = UDim2.new(0, 10, 0, 10)
+        end
+        if Value == "Bottom Left" then
+            pingLabel.AnchorPoint = Vector2.new(0, 1)
+            pingLabel.Position = UDim2.new(0, 10, 1, -10)
+        end
+        if Value == "Top Right" then
+            pingLabel.AnchorPoint = Vector2.new(1, 0)
+            pingLabel.Position = UDim2.new(1, -10, 0, 10)
+        end
+        if Value == "Bottom Right" then
+            pingLabel.AnchorPoint = Vector2.new(1, 1)
+            pingLabel.Position = UDim2.new(1, -10, 1, -10)
+        end
+    end
+})
 
 local AimbotTab = Window:MakeTab({
     Name = "Aimbot"
@@ -645,13 +844,62 @@ TriggerbotTab:AddSlider({
 })
 
 TriggerbotTab:AddParagraph("Notice", "AbstractHub triggerbot is currently extremely buggy. On Solara, you need to click again after the triggerbot fires or it will continue to fire.")
-TriggerbotTab:AddParagraph("Triggerbot might be removed", "Due to the bugginess of the triggerbot, it may be removed in future versions.")
 
-local MiscTab = Window:MakeTab({
-    Name = "Miscellaneous"
+local MoveTab = Window:MakeTab({
+    Name = "Movement"
 })
 
-local SpinbotSection = MiscTab:AddSection({
+local FlySection = MoveTab:AddSection({
+    Name = "Fly"
+})
+
+FlySection:AddToggle({
+    Name = "Swim Fly",
+    Callback = function(Value)
+        FLY_ON = Value
+        if FLY_ON then
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Flying, false)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall, false)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp, false)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, false)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, false)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics, false)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.StrafingNoPhysics, false)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Swimming, false)
+            humanoid:ChangeState(Enum.HumanoidStateType.Swimming)
+            
+            connection = RunService.Heartbeat:Connect(fly)
+        else
+            if connection then
+                connection:Disconnect()
+            end
+            
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Flying, true)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp, true)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics, true)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, true)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, true)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics, true)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.StrafingNoPhysics, true)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Swimming, true)
+            humanoid:ChangeState(Enum.HumanoidStateType.Running)
+        end
+    end
+})
+
+local SpinbotSection = MoveTab:AddSection({
     Name = "Spinbot"
 })
 
@@ -701,6 +949,27 @@ SpinbotSection:AddSlider({
     Callback = function(Value)
         SPINBOT_SPEED = Value
     end
+})
+
+local BhopSection = MoveTab:AddSection({
+    Name = "Bunny Hop"
+})
+
+BhopSection:AddToggle({
+    Name = "Bunny Hop",
+    Default = false,
+    Callback = function(Value)
+        if Value == true then
+            BHOP_ON = true
+        else
+            BHOP_ON = false
+        end
+    end
+})
+
+
+local MiscTab = Window:MakeTab({
+    Name = "Miscellaneous"
 })
 
 local BypassSection = MiscTab:AddSection({
@@ -755,19 +1024,39 @@ BypassSection:AddTextbox({
 
 BypassSection:AddParagraph("Notice", "If it is not copying to clipboard, your executor does not support it. An alternative will be added in the future.")
 
-local BhopSection = MiscTab:AddSection({
-    Name = "Bunny Hop"
+local ChatLogSection = MiscTab:AddSection({
+    Name = "Chat Logger"
 })
 
-BhopSection:AddToggle({
-    Name = "Bunny Hop",
-    Default = false,
-    Callback = function(Value)
-        if Value == true then
-            BHOP_ON = true
-        else
-            BHOP_ON = false
+ChatLogSection:AddButton({
+    Name = "Start Logger",
+    Callback = function()
+        local LogFile = "ChatLog_" .. os.date("%Y-%m-%d") .. ".txt"
+
+        local function LogChat(player, message)
+            local timestamp = os.date("%H:%M:%S")
+            local logMessage = string.format("[%s] %s: %s\n", timestamp, player.Name, message)
+            appendfile(LogFile, logMessage)
         end
+
+        for _, player in ipairs(Players:GetPlayers()) do
+            player.Chatted:Connect(function(message)
+                LogChat(player, message)
+            end)
+        end
+
+        Players.PlayerAdded:Connect(function(player)
+            player.Chatted:Connect(function(message)
+                LogChat(player, message)
+            end)
+        end)
+
+        OrionLib:MakeNotification({
+            Name = "Started logger",
+            Content = "Chat logger started. Logs will save to " .. LogFile,
+            Image = "rbxassetid://18540617874",
+            Time = 5
+        })
     end
 })
 
@@ -852,11 +1141,13 @@ for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
     end
 end
 
+
+
 game:GetService("Players").PlayerAdded:Connect(playerAdded)
 game:GetService("Players").PlayerRemoving:Connect(playerRemoved)
 
 OrionLib:MakeNotification({
-    Name = "Welcome to AbstractHub! [ v " .. ABSTRACTHUB_VERSION .. " ]",
+    Name = "Welcome to AbstractHub! [ v" .. ABSTRACTHUB_VERSION .. " ]",
     Content = "Join our Discord! [ .gg/kMDWV94sTP ]",
     Image = "rbxassetid://18540617874",
     Time = 5

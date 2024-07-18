@@ -1,8 +1,8 @@
-print("Injecting AbstractHub...")
+print("Injecting Aceware...")
 
-local ABSTRACTHUB_VERSION = "0.9.0"
+local ACEWARE_VERSION = "0.9.0"
 
-print("Version is " .. ABSTRACTHUB_VERSION)
+print("Version is " .. ACEWARE_VERSION)
 
 local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
 
@@ -517,7 +517,7 @@ end)
 
 
 local Window = OrionLib:MakeWindow({
-    Name = "AbstractHub v" .. ABSTRACTHUB_VERSION,
+    Name = "Aceware v" .. ACEWARE_VERSION,
     HidePremium = false,
     IntroEnabled = true,
     IntroText = "Loading AbstractHub... ( version " .. ABSTRACTHUB_VERSION .. " )",
@@ -558,7 +558,7 @@ InfoTab:AddParagraph("Version", ABSTRACTHUB_VERSION)
 InfoTab:AddParagraph("Executor", identifyexecutor())
 InfoTab:AddParagraph("Game", gameName)
 InfoTab:AddParagraph("Game ID", game.placeId)
-InfoTab:AddParagraph("AbstractHub Support Discord", "discord.gg/kMDWV94sTP")
+InfoTab:AddParagraph("Aceware Support Discord", "discord.gg/kMDWV94sTP")
 
 local UITab = Window:MakeTab({
     Name = "UI"
@@ -1064,8 +1064,8 @@ local CreditsTab = Window:MakeTab({
     Name = "Credits"
 })
 
-CreditsTab:AddLabel("AbstractHub Credits")
-CreditsTab:AddParagraph("Main Programmer", "AbstractFlags")
+CreditsTab:AddLabel("Aceware Credits")
+CreditsTab:AddParagraph("Main Programmer", "Lilaf")
 CreditsTab:AddParagraph("Skeleton ESP Programmer", "Yazz")
 CreditsTab:AddParagraph("UI Library", "Orion Library")
 CreditsTab:AddParagraph("UI Library Creator", "Shlexware")
@@ -1147,10 +1147,10 @@ game:GetService("Players").PlayerAdded:Connect(playerAdded)
 game:GetService("Players").PlayerRemoving:Connect(playerRemoved)
 
 OrionLib:MakeNotification({
-    Name = "Welcome to AbstractHub! [ v" .. ABSTRACTHUB_VERSION .. " ]",
+    Name = "Welcome to Aceware! [ v" .. ACEWARE_VERSION .. " ]",
     Content = "Join our Discord! [ .gg/kMDWV94sTP ]",
     Image = "rbxassetid://18540617874",
     Time = 5
 })
 
-print("Loaded AbstractHub!")
+print("Loaded Aceware!")

@@ -9,7 +9,12 @@ local AIMBOT_BIND = Enum.UserInputType.MouseButton2
 local TRIGGERBOT_ON = false
 local TRIGGERBOT_DELAY = 0.1
 
-local ESP_COLOR = Color3.fromRGB(255, 255, 255)
+local SPINBOT_SPEED = 10
+
+local spinConnection
+local spinAngle = 0
+
+local ESP_COLOR = Color3.fromRGB(255, 255, 255) 
 
 local circle
 
@@ -18,6 +23,12 @@ local localplayer = game:GetService("Players").LocalPlayer
 local dist = math.huge
 local target = nil
 local aiming = false
+
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 
 local UIS = game:GetService("UserInputService")
 
@@ -260,11 +271,29 @@ function closestplayer()
 end
 
 
+local function spin(deltaTime)
+    if type(SPIN_SPEED) ~= "number" then
+        warn("SPIN_SPEED is not a number. Setting to default value of 10.")
+        SPIN_SPEED = 10
+    end
+
+    spinAngle = spinAngle + math.rad(SPIN_SPEED)
+    
+    local currentPosition = humanoidRootPart.Position
+    local lookVector = humanoidRootPart.CFrame.LookVector
+    
+    local newCFrame = CFrame.new(currentPosition, currentPosition + lookVector) * CFrame.Angles(0, spinAngle, 0)
+    
+    humanoidRootPart.CFrame = newCFrame
+end
+
 local Window = OrionLib:MakeWindow({
-    Name = "AbstractHub v0.3.0",
+    Name = "AbstractHub v0.5.0",
     HidePremium = false,
     IntroEnabled = true,
-    IntroText = "Loading AbstractHub... ( version 0.3.0 )",
+    IntroText = "Loading AbstractHub... ( version 0.5.0 )",
+    Icon = "rbxassetid://18540617874",
+    IntroIcon = "rbxassetid://18540617874",
     CloseCallback = function()
         OrionLib:Destroy()
         if circle then
@@ -277,6 +306,10 @@ local Window = OrionLib:MakeWindow({
             removeBox(player)
         end
         TRIGGERBOT_ON = false
+        if spinConnection then
+            spinConnection:Disconnect()
+            spinConnection = nil
+        end
     end
 })
 
@@ -475,14 +508,46 @@ TriggerbotTab:AddSlider({
     end
 })
 
-TriggerbotTab:AddParagraph("Notice", "On Solara (and possibly other executors), you must click again after the triggerbot fires in order to stop it from continually clicking. I am trying to fix this and will likely be fixed in v0.3.1.")
+TriggerbotTab:AddParagraph("Notice", "AbstractHub triggerbot is currently extremely buggy. On Solara, you need to click again after the triggerbot fires or it will continue to fire.")
+TriggerbotTab:AddParagraph("Triggerbot might be removed", "Due to the bugginess of the triggerbot, it may be removed in future versions.")
 
-local InfoTab = Window:MakeTab({
-    Name = "Info"
+local MiscTab = Window:MakeTab({
+    Name = "Miscellaneous"
 })
 
-InfoTab:AddParagraph("Version", "v0.3.0")
-InfoTab:AddLabel("More info coming soon!")
+local SpinbotSection = MiscTab:AddSection({
+    Name = "Spinbot"
+})
+
+SpinbotSection:AddToggle({
+    Name = "Spinbot",
+    Default = false,
+    Callback = function(Value)
+        if Value then
+            if not spinConnection then
+                spinConnection = game:GetService("RunService").Heartbeat:Connect(spin)
+            end
+        else
+            if spinConnection then
+                spinConnection:Disconnect()
+                spinConnection = nil
+            end
+            spinAngle = 0
+        end
+    end
+})
+
+SpinbotSection:AddSlider({
+    Name = "Spin Speed",
+    Min = 0,
+    Max = 50,
+    Default = 10,
+    Color = Color3.fromRGB(205, 125, 255),
+    Increment = 1,
+    Callback = function(Value)
+        SPINBOT_SPEED = Value
+    end
+})
 
 local CreditsTab = Window:MakeTab({
     Name = "Credits"
@@ -548,10 +613,8 @@ game:GetService("RunService").RenderStepped:Connect(function()
         if target and target.Parent and target.Parent:FindFirstChild("Humanoid") then
             local player = game.Players:GetPlayerFromCharacter(target.Parent)
             if player and player ~= localplayer then
-                task.wait(TRIGGERBOT_DELAY)
-                mouse1press();
-                task.wait(0.1)
-                mouse1release();
+                wait(TRIGGERBOT_DELAY)
+                mouse1click();
             end
         end
     end
@@ -565,3 +628,10 @@ end
 
 game:GetService("Players").PlayerAdded:Connect(playerAdded)
 game:GetService("Players").PlayerRemoving:Connect(playerRemoved)
+
+OrionLib:MakeNotification({
+    Name = "Welcome to AbstractHub! [ v0.5.0 ]",
+    Content = "Join our Discord! [ .gg/kMDWV94sTP ]",
+    Image = "rbxassetid://18540617874",
+    Time = 5
+})

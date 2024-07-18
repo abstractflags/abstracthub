@@ -1,3 +1,5 @@
+local ABSTRACTHUB_VERSION = "0.7.0"
+
 local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
 
 local AIMBOT_ON = false
@@ -318,10 +320,10 @@ local function spinvert(deltaTime)
 end
 
 local Window = OrionLib:MakeWindow({
-    Name = "AbstractHub v0.6.0",
+    Name = "AbstractHub v" .. ABSTRACTHUB_VERSION,
     HidePremium = false,
     IntroEnabled = true,
-    IntroText = "Loading AbstractHub... ( version 0.6.0 )",
+    IntroText = "Loading AbstractHub... ( version " .. ABSTRACTHUB_VERSION .. " )",
     Icon = "rbxassetid://18540617874",
     IntroIcon = "rbxassetid://18540617874",
     CloseCallback = function()
@@ -342,6 +344,20 @@ local Window = OrionLib:MakeWindow({
         end
     end
 })
+
+local InfoTab = Window:MakeTab({
+    Name = "Information"
+})
+
+local MarketplaceService = game:GetService("MarketplaceService")
+local gameInfo = MarketplaceService:GetProductInfo(game.PlaceId)
+local gameName = gameInfo.Name
+
+InfoTab:AddParagraph("Version", ABSTRACTHUB_VERSION)
+InfoTab:AddParagraph("Executor", identifyexecutor())
+InfoTab:AddParagraph("Game", gameName)
+InfoTab:AddParagraph("Game ID", game.placeId)
+
 
 local AimbotTab = Window:MakeTab({
     Name = "Aimbot"
@@ -731,7 +747,7 @@ game:GetService("Players").PlayerAdded:Connect(playerAdded)
 game:GetService("Players").PlayerRemoving:Connect(playerRemoved)
 
 OrionLib:MakeNotification({
-    Name = "Welcome to AbstractHub! [ v0.6.0 ]",
+    Name = "Welcome to AbstractHub! [ v " .. ABSTRACTHUB_VERSION .. " ]",
     Content = "Join our Discord! [ .gg/kMDWV94sTP ]",
     Image = "rbxassetid://18540617874",
     Time = 5

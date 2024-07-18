@@ -1,4 +1,8 @@
-local ABSTRACTHUB_VERSION = "0.7.0"
+print("Injecting AbstractHub...")
+
+local ABSTRACTHUB_VERSION = "0.8.0"
+
+print("Version is " .. ABSTRACTHUB_VERSION)
 
 local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
 
@@ -12,6 +16,10 @@ local TRIGGERBOT_ON = false
 local TRIGGERBOT_DELAY = 0.1
 
 local SPINBOT_SPEED = 10
+
+local BHOP_ON = false
+
+local CHAMS_ON = false
 
 local horizSpinConnection
 local horizSpinAngle = 0
@@ -319,6 +327,75 @@ local function spinvert(deltaTime)
     humanoidRootPart.CFrame = newCFrame
 end
 
+local function checkForBhop()
+    if character then
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid and humanoid:GetState() == Enum.HumanoidStateType.Running then
+            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end
+end
+
+local highlightedCharacters = {}
+
+local function updateHighlightColor(highlight)
+    highlight.FillColor = ESP_COLOR
+end
+
+local function createHighlight(character)
+    local highlight = Instance.new("Highlight")
+    updateHighlightColor(highlight)
+    highlight.FillTransparency = 0
+    highlight.OutlineTransparency = 0
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Adornee = character
+    highlight.Enabled = CHAMS_ON
+    highlight.Parent = character
+    
+    highlightedCharacters[character] = highlight
+end
+
+local function removeHighlight(character)
+    local highlight = highlightedCharacters[character]
+    if highlight then
+        highlight:Destroy()
+        highlightedCharacters[character] = nil
+    end
+end
+
+local function updateHighlights()
+    for character, highlight in pairs(highlightedCharacters) do
+        highlight.Enabled = CHAMS_ON
+        updateHighlightColor(highlight)
+    end
+end
+
+local function onPlayerAdded(player)
+    if player ~= LocalPlayer then
+        player.CharacterAdded:Connect(function(character)
+            createHighlight(character)
+        end)
+        player.CharacterRemoving:Connect(function(character)
+            removeHighlight(character)
+        end)
+        if player.Character then
+            createHighlight(player.Character)
+        end
+    end
+end
+
+Players.PlayerAdded:Connect(onPlayerAdded)
+Players.PlayerRemoving:Connect(function(player)
+    if player.Character then
+        removeHighlight(player.Character)
+    end
+end)
+
+for _, player in ipairs(Players:GetPlayers()) do
+    onPlayerAdded(player)
+end
+
+
 local Window = OrionLib:MakeWindow({
     Name = "AbstractHub v" .. ABSTRACTHUB_VERSION,
     HidePremium = false,
@@ -332,7 +409,6 @@ local Window = OrionLib:MakeWindow({
             circle:Remove()
         end
         AIMBOT_ON = false
-        -- Clean up Skeleton ESP and Box ESP
         for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
             removeSkeleton(player)
             removeBox(player)
@@ -342,6 +418,8 @@ local Window = OrionLib:MakeWindow({
             spinConnection:Disconnect()
             spinConnection = nil
         end
+        BHOP_ON = false
+        CHAMS_ON = false
     end
 })
 
@@ -505,8 +583,18 @@ local ESPSkeletonToggle = ESPMain:AddToggle({
     end
 })
 
+local ESPChams = ESPTab:AddSection({
+    Name = "Chams"
+})
 
-
+ESPChams:AddToggle({
+    Name = "Chams",
+    Default = false,
+    Callback = function(Value)
+        CHAMS_ON = Value
+        updateHighlights()
+    end
+})
 
 
 local ESPColor = ESPTab:AddSection({
@@ -526,6 +614,8 @@ ESPColor:AddColorpicker({
         for _, box in pairs(boxDrawings) do
             box.Color = Value
         end
+
+        updateHighlights()
     end
 })
 
@@ -665,6 +755,21 @@ BypassSection:AddTextbox({
 
 BypassSection:AddParagraph("Notice", "If it is not copying to clipboard, your executor does not support it. An alternative will be added in the future.")
 
+local BhopSection = MiscTab:AddSection({
+    Name = "Bunny Hop"
+})
+
+BhopSection:AddToggle({
+    Name = "Bunny Hop",
+    Default = false,
+    Callback = function(Value)
+        if Value == true then
+            BHOP_ON = true
+        else
+            BHOP_ON = false
+        end
+    end
+})
 
 local CreditsTab = Window:MakeTab({
     Name = "Credits"
@@ -735,6 +840,10 @@ game:GetService("RunService").RenderStepped:Connect(function()
             end
         end
     end
+
+    if BHOP_ON then
+        checkForBhop()
+    end
 end)
 
 for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
@@ -752,3 +861,5 @@ OrionLib:MakeNotification({
     Image = "rbxassetid://18540617874",
     Time = 5
 })
+
+print("Loaded AbstractHub!")

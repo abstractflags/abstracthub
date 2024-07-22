@@ -2,7 +2,7 @@
 
 print("Loading Aceware...")
 
-local ACEWARE_VERSION_NUMBER = "1.0.0"
+local ACEWARE_VERSION_NUMBER = "1.0.1"
 local ACEWARE_VERSION_VNUM = "v" .. ACEWARE_VERSION_NUMBER
 local ACEWARE_VERSION_LONG = "version " .. ACEWARE_VERSION_NUMBER
 
@@ -70,6 +70,8 @@ local MarketplaceService = game:GetService("MarketplaceService")
 
     -- RAGDOLL VARIABLES
     local RAGDOLL_ON = false
+
+    -- NOCLIP VARIABLES
 
 -- INITIALIZE FUNCTIONS
 
@@ -165,7 +167,7 @@ end
         updateBonePositions(bones[14], character:FindFirstChild("RightLowerLeg"), character:FindFirstChild("RightFoot"))
 
         for _, bone in ipairs(bones) do
-            bone.Color = ESP_COLOR
+            bone.Color = SKELETON_ESP_COLOR
         end
     end
 
@@ -246,6 +248,7 @@ end
         end
     end
 
+
     local function onPlayerRemoving(player)
         if skeletonConnections[player] then
             skeletonConnections[player]:Disconnect()
@@ -269,6 +272,7 @@ end
             end
         end
     end
+
 
     local function spinhoriz(deltaTime)
         if type(SPIN_SPEED) ~= "number" then
@@ -321,8 +325,6 @@ end
 
     local connection
     function fly(delta)
-        if not localPlayer.Character:IsDescendantOf(workspace) or not humanoid.Health > 0 then return end
-        
         local moveDirection = Vector3.new()
         local cameraCFrame = workspace.CurrentCamera.CFrame
         
@@ -352,6 +354,7 @@ end
         humanoidRootPart.Velocity = moveDirection * 50
     end
 
+
 -- INITIALIZE RAYFIELD
 
 local Window = Rayfield:CreateWindow({
@@ -371,13 +374,14 @@ local TabMisc = Window:CreateTab("Miscellaneous", 7733954760)
 -- ELEMENTS
 
      -- INFO ELEMENTS
-    TabInfo:CreateParagraph({Title = "Version", Content = ACEWARE_VERSION_NUMBER})
+    TabInfo:CreateParagraph({Title = "Aceware Version", Content = ACEWARE_VERSION_NUMBER})
     TabInfo:CreateParagraph({Title = "Executor", Content = identifyexecutor()})
     TabInfo:CreateParagraph({Title = "Game", Content = gameName})
     TabInfo:CreateParagraph({Title = "Game ID", Content = game.placeId})
     TabInfo:CreateParagraph({Title = "Aceware Discord", Content = "discord.gg/kMDWV94sTP"})
 
     -- AIMBOT ELEMENTS
+    TabAimbot:CreateParagraph({Title = "Instructions", Content = "Use right click to lock on when the target is within the FOV range"})
     TabAimbot:CreateSection("Main")
     TabAimbot:CreateToggle({
         Name = "Aimbot Enabled",
@@ -491,6 +495,7 @@ local TabMisc = Window:CreateTab("Miscellaneous", 7733954760)
             updateHighlights()
         end
     })
+
 
     -- MOVEMENT ELEMENTS
     TabMovement:CreateSection("Flight")

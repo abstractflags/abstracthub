@@ -2,7 +2,7 @@
 
 print("Loading Aceware...")
 
-local ACEWARE_VERSION_NUMBER = "1.0.1"
+local ACEWARE_VERSION_NUMBER = "1.1.0"
 local ACEWARE_VERSION_VNUM = "v" .. ACEWARE_VERSION_NUMBER
 local ACEWARE_VERSION_LONG = "version " .. ACEWARE_VERSION_NUMBER
 
@@ -46,13 +46,18 @@ local MarketplaceService = game:GetService("MarketplaceService")
     local BOX_ESP_COLOR = Color3.fromRGB(255, 255, 255)
     local SKELETON_ESP_COLOR = Color3.fromRGB(255, 255, 255)
     local CHAMS_COLOR = Color3.fromRGB(255, 255, 255)
+    local TRACER_COLOR = Color3.fromRGB(255, 255, 255)
     local ESPBoxToggle = {Value = false}
     local ESPSkeletonToggle = {Value = false}
+    local TRACERS_ON = false
     local CHAMS_ON = false
     local skeletonConnections = {}
     local skeletonDrawings = {}
     local boxDrawings = {}
     local highlightedCharacters = {}
+    local tracerDrawings = {}
+    local BOX_TEAM_COLOR = false
+    local SKELETON_TEAM_COLOR = false
 
     -- FLIGHT VARIABLES
     local SFLY_ON = false
@@ -70,8 +75,6 @@ local MarketplaceService = game:GetService("MarketplaceService")
 
     -- RAGDOLL VARIABLES
     local RAGDOLL_ON = false
-
-    -- NOCLIP VARIABLES
 
 -- INITIALIZE FUNCTIONS
 
@@ -96,7 +99,7 @@ function getClosestPlayer()
     return closest
 end
 
- local function createBone()
+    local function createBone()
         local bone = Drawing.new("Line")
         bone.Visible = false
         bone.Color = SKELETON_ESP_COLOR
@@ -111,68 +114,94 @@ end
     end
 
     local function createSkeleton(player)
-    local character = player.Character
-    if not character then return end
-    local bones = {
-        createBone(), -- Head to UpperTorso
-        createBone(), -- UpperTorso to LowerTorso
-        createBone(), -- UpperTorso to LeftUpperArm
-        createBone(), -- LeftUpperArm to LeftLowerArm
-        createBone(), -- LeftLowerArm to LeftHand
-        createBone(), -- UpperTorso to RightUpperArm
-        createBone(), -- RightUpperArm to RightLowerArm
-        createBone(), -- RightLowerArm to RightHand
-        createBone(), -- LowerTorso to LeftUpperLeg
-        createBone(), -- LeftUpperLeg to LeftLowerLeg
-        createBone(), -- LeftLowerLeg to LeftFoot
-        createBone(), -- LowerTorso to RightUpperLeg
-        createBone(), -- RightUpperLeg to RightLowerLeg
-        createBone(), -- RightLowerLeg to RightFoot
-    }
-    skeletonDrawings[player] = bones
-
-    local function updateSkeleton()
-        if not ESPSkeletonToggle.Value or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
-            for _, bone in ipairs(bones) do
-                bone.Visible = false
+        local character = player.Character
+        if not character then return end
+        
+        local bones = {
+            createBone(), -- Head to Torso/UpperTorso
+            createBone(), -- Torso/UpperTorso to LowerTorso (R15 only)
+            createBone(), -- Torso/UpperTorso to LeftArm/LeftUpperArm
+            createBone(), -- LeftArm/LeftUpperArm to LeftLowerArm (R15 only)
+            createBone(), -- LeftLowerArm to LeftHand (R15 only)
+            createBone(), -- Torso/UpperTorso to RightArm/RightUpperArm
+            createBone(), -- RightArm/RightUpperArm to RightLowerArm (R15 only)
+            createBone(), -- RightLowerArm to RightHand (R15 only)
+            createBone(), -- Torso/LowerTorso to LeftLeg/LeftUpperLeg
+            createBone(), -- LeftLeg/LeftUpperLeg to LeftLowerLeg (R15 only)
+            createBone(), -- LeftLowerLeg to LeftFoot (R15 only)
+            createBone(), -- Torso/LowerTorso to RightLeg/RightUpperLeg
+            createBone(), -- RightLeg/RightUpperLeg to RightLowerLeg (R15 only)
+            createBone(), -- RightLowerLeg to RightFoot (R15 only)
+        }
+        
+        skeletonDrawings[player] = bones
+        
+        local function updateSkeleton()
+            if not ESPSkeletonToggle.Value or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+                for _, bone in ipairs(bones) do
+                    bone.Visible = false
+                end
+                return
             end
-            return
-        end
 
-        local function updateBonePositions(bone, part1, part2)
-            if not part1 or not part2 then return end
-            local p1, vis1 = camera:WorldToViewportPoint(part1.Position)
-            local p2, vis2 = camera:WorldToViewportPoint(part2.Position)
-            if vis1 and vis2 then
-                updateBone(bone, Vector2.new(p1.X, p1.Y), Vector2.new(p2.X, p2.Y))
-                bone.Visible = true
+            local function updateBonePositions(bone, part1, part2)
+                if not part1 or not part2 then return end
+                local p1, vis1 = camera:WorldToViewportPoint(part1.Position)
+                local p2, vis2 = camera:WorldToViewportPoint(part2.Position)
+                if vis1 and vis2 then
+                    updateBone(bone, Vector2.new(p1.X, p1.Y), Vector2.new(p2.X, p2.Y))
+                    bone.Visible = true
+                else
+                    bone.Visible = false
+                end
+            end
+
+            local isR15 = character:FindFirstChild("UpperTorso") ~= nil
+        
+            if isR15 then
+                updateBonePositions(bones[1], character:FindFirstChild("Head"), character:FindFirstChild("UpperTorso"))
+                updateBonePositions(bones[2], character:FindFirstChild("UpperTorso"), character:FindFirstChild("LowerTorso"))
+                updateBonePositions(bones[3], character:FindFirstChild("UpperTorso"), character:FindFirstChild("LeftUpperArm"))
+                updateBonePositions(bones[4], character:FindFirstChild("LeftUpperArm"), character:FindFirstChild("LeftLowerArm"))
+                updateBonePositions(bones[5], character:FindFirstChild("LeftLowerArm"), character:FindFirstChild("LeftHand"))
+                updateBonePositions(bones[6], character:FindFirstChild("UpperTorso"), character:FindFirstChild("RightUpperArm"))
+                updateBonePositions(bones[7], character:FindFirstChild("RightUpperArm"), character:FindFirstChild("RightLowerArm"))
+                updateBonePositions(bones[8], character:FindFirstChild("RightLowerArm"), character:FindFirstChild("RightHand"))
+                updateBonePositions(bones[9], character:FindFirstChild("LowerTorso"), character:FindFirstChild("LeftUpperLeg"))
+                updateBonePositions(bones[10], character:FindFirstChild("LeftUpperLeg"), character:FindFirstChild("LeftLowerLeg"))
+                updateBonePositions(bones[11], character:FindFirstChild("LeftLowerLeg"), character:FindFirstChild("LeftFoot"))
+                updateBonePositions(bones[12], character:FindFirstChild("LowerTorso"), character:FindFirstChild("RightUpperLeg"))
+                updateBonePositions(bones[13], character:FindFirstChild("RightUpperLeg"), character:FindFirstChild("RightLowerLeg"))
+                updateBonePositions(bones[14], character:FindFirstChild("RightLowerLeg"), character:FindFirstChild("RightFoot"))
             else
-                bone.Visible = false
+                updateBonePositions(bones[1], character:FindFirstChild("Head"), character:FindFirstChild("Torso"))
+                bones[2].Visible = false -- No UpperTorso to LowerTorso for R6
+                updateBonePositions(bones[3], character:FindFirstChild("Torso"), character:FindFirstChild("Left Arm"))
+                bones[4].Visible = false -- No LeftUpperArm to LeftLowerArm for R6
+                bones[5].Visible = false -- No LeftLowerArm to LeftHand for R6
+                updateBonePositions(bones[6], character:FindFirstChild("Torso"), character:FindFirstChild("Right Arm"))
+                bones[7].Visible = false -- No RightUpperArm to RightLowerArm for R6
+                bones[8].Visible = false -- No RightLowerArm to RightHand for R6
+                updateBonePositions(bones[9], character:FindFirstChild("Torso"), character:FindFirstChild("Left Leg"))
+                bones[10].Visible = false -- No LeftUpperLeg to LeftLowerLeg for R6
+                bones[11].Visible = false -- No LeftLowerLeg to LeftFoot for R6
+                updateBonePositions(bones[12], character:FindFirstChild("Torso"), character:FindFirstChild("Right Leg"))
+                bones[13].Visible = false -- No RightUpperLeg to RightLowerLeg for R6
+                bones[14].Visible = false -- No RightLowerLeg to RightFoot for R6
+            end
+            
+            for _, bone in ipairs(bones) do
+                if SKELETON_TEAM_COLOR == false then
+                    bone.Color = SKELETON_ESP_COLOR
+                else
+                    bone.Color = player.TeamColor.Color
+                end
             end
         end
-
-        updateBonePositions(bones[1], character:FindFirstChild("Head"), character:FindFirstChild("UpperTorso"))
-        updateBonePositions(bones[2], character:FindFirstChild("UpperTorso"), character:FindFirstChild("LowerTorso"))
-        updateBonePositions(bones[3], character:FindFirstChild("UpperTorso"), character:FindFirstChild("LeftUpperArm"))
-        updateBonePositions(bones[4], character:FindFirstChild("LeftUpperArm"), character:FindFirstChild("LeftLowerArm"))
-        updateBonePositions(bones[5], character:FindFirstChild("LeftLowerArm"), character:FindFirstChild("LeftHand"))
-        updateBonePositions(bones[6], character:FindFirstChild("UpperTorso"), character:FindFirstChild("RightUpperArm"))
-        updateBonePositions(bones[7], character:FindFirstChild("RightUpperArm"), character:FindFirstChild("RightLowerArm"))
-        updateBonePositions(bones[8], character:FindFirstChild("RightLowerArm"), character:FindFirstChild("RightHand"))
-        updateBonePositions(bones[9], character:FindFirstChild("LowerTorso"), character:FindFirstChild("LeftUpperLeg"))
-        updateBonePositions(bones[10], character:FindFirstChild("LeftUpperLeg"), character:FindFirstChild("LeftLowerLeg"))
-        updateBonePositions(bones[11], character:FindFirstChild("LeftLowerLeg"), character:FindFirstChild("LeftFoot"))
-        updateBonePositions(bones[12], character:FindFirstChild("LowerTorso"), character:FindFirstChild("RightUpperLeg"))
-        updateBonePositions(bones[13], character:FindFirstChild("RightUpperLeg"), character:FindFirstChild("RightLowerLeg"))
-        updateBonePositions(bones[14], character:FindFirstChild("RightLowerLeg"), character:FindFirstChild("RightFoot"))
-
-        for _, bone in ipairs(bones) do
-            bone.Color = SKELETON_ESP_COLOR
-        end
+        
+        skeletonConnections[player] = game:GetService("RunService").RenderStepped:Connect(updateSkeleton)
     end
 
-    skeletonConnections[player] = game:GetService("RunService").RenderStepped:Connect(updateSkeleton)
-end
 
 
     local function createBox(player)
@@ -210,7 +239,11 @@ end
 
         box.Size = Vector2.new(2350 / rootPos.Z, headPos.Y - legPos.Y)
         box.Position = Vector2.new(rootPos.X - box.Size.X / 2, rootPos.Y - box.Size.Y / 2)
-        box.Color = BOX_ESP_COLOR
+        if BOX_TEAM_COLOR == false then
+            box.Color = BOX_ESP_COLOR
+        else
+            box.Color = player.TeamColor.Color
+        end
         box.Visible = true
     end
 
@@ -233,17 +266,72 @@ end
         end
     end
 
+    local function createTracer()
+        local line = Drawing.new("Line")
+        line.Thickness = 1
+        line.Color = TRACER_COLOR
+        line.Visible = false
+        return line
+    end
+
+    local function updateTracers()
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= localPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                local torso = player.Character.HumanoidRootPart
+                local torsoPosition, onScreen = camera:WorldToViewportPoint(torso.Position)
+
+                if onScreen then
+                    local line = tracerDrawings[player]
+                    if not line then
+                        line = createTracer()
+                        tracerDrawings[player] = line
+                    end
+
+                    line.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
+                    line.To = Vector2.new(torsoPosition.X, torsoPosition.Y)
+                    line.Visible = TRACERS_ON
+                elseif tracerDrawings[player] then
+                    tracerDrawings[player].Visible = false
+                end
+            elseif tracerDrawings[player] then
+                tracerDrawings[player].Visible = false
+            end
+        end
+    end
+
+                
+
+    local function onCharacterAdded(character, player)
+        createSkeleton(player)
+        createBox(player)
+        createHighlight(character)
+        
+        local humanoid = character:WaitForChild("Humanoid", 10) -- Wait for the Humanoid to be added, with a timeout of 10 seconds
+        if humanoid then
+            humanoid.Died:Connect(function()
+                if boxDrawings[player] then
+                    boxDrawings[player].Visible = false
+                    boxDrawings[player] = nil
+                end
+                if skeletonDrawings[player] then
+                    skeletonDrawings[player].Visible = false
+                    skeletonDrawings[player] = nil
+                end
+                if tracerDrawings[player] then
+                    tracerDrawings[player].Visible = false
+                    tracerDrawings[player] = nil
+                end
+            end)
+        end
+    end
+
     local function onPlayerAdded(player)
         if player ~= localPlayer then
             player.CharacterAdded:Connect(function(character)
-                createSkeleton(player)
-                createBox(player)
-                createHighlight(character)
+                onCharacterAdded(character, player)
             end)
             if player.Character then
-                createSkeleton(player)
-                createBox(player)
-                createHighlight(player.Character)
+                onCharacterAdded(player.Character, player)
             end
         end
     end
@@ -270,6 +358,10 @@ end
                 highlight:Destroy()
                 highlightedCharacters[player.Character] = nil
             end
+        end
+        if tracerDrawings[player] then
+            tracerDrawings[player]:Remove()
+            tracerDrawings[player] = nil
         end
     end
 
@@ -461,6 +553,13 @@ local TabMisc = Window:CreateTab("Miscellaneous", 7733954760)
             BOX_ESP_COLOR = Value
         end
     })
+    TabESP:CreateToggle({
+        Name = "Use Team Color",
+        CurrentValue = false,
+        Callback = function(Value)
+            BOX_TEAM_COLOR = Value
+        end
+    })
 
     TabESP:CreateSection("Skeleton ESP")
     TabESP:CreateToggle({
@@ -475,6 +574,13 @@ local TabMisc = Window:CreateTab("Miscellaneous", 7733954760)
         Color = Color3.fromRGB(255, 255, 255),
         Callback = function(Value)
             SKELETON_ESP_COLOR = Value
+        end
+    })
+    TabESP:CreateToggle({
+        Name = "Use Team Color",
+        CurrentValue = false,
+        Callback = function(Value)
+            SKELETON_TEAM_COLOR = Value
         end
     })
 
@@ -493,6 +599,28 @@ local TabMisc = Window:CreateTab("Miscellaneous", 7733954760)
         Callback = function(Value)
             CHAMS_COLOR = Value
             updateHighlights()
+        end
+    })
+
+    TabESP:CreateSection("Tracers")
+    TabESP:CreateToggle({
+        Name = "Tracers Enabled",
+        CurrentValue = false,
+        Callback = function(Value)
+            TRACERS_ON = Value
+            for _, line in pairs(tracerDrawings) do
+                line.Visible = not line.Visible
+            end
+        end
+    })
+    TabESP:CreateColorPicker({
+        Name = "Tracer Color",
+        Color = Color3.fromRGB(255, 255, 255),
+        Callback = function(Value)
+            TRACER_COLOR = Value
+            for _, line in pairs(tracerDrawings) do
+                line.Color = TRACER_COLOR
+            end
         end
     })
 
@@ -730,9 +858,15 @@ end
         for player, box in pairs(boxDrawings) do
             updateBox(player, box)
         end
+
+        updateTracers()
     end)
 
 setupConnections()
+
+for _, player in ipairs(Players:GetPlayers()) do
+    onPlayerAdded(player)
+end
 
 -- FINISH LOADING
 print("Aceware " .. ACEWARE_VERSION_VNUM .. " loaded!")

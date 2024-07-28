@@ -2,7 +2,7 @@
 
 print("Loading Aceware...")
 
-local ACEWARE_VERSION_NUMBER = "1.1.0"
+local ACEWARE_VERSION_NUMBER = "1.2.0"
 local ACEWARE_VERSION_VNUM = "v" .. ACEWARE_VERSION_NUMBER
 local ACEWARE_VERSION_LONG = "version " .. ACEWARE_VERSION_NUMBER
 
@@ -30,7 +30,12 @@ local MarketplaceService = game:GetService("MarketplaceService")
     local gameInfo = MarketplaceService:GetProductInfo(game.PlaceId)
     local gameName = gameInfo.Name
     local humanoid = localPlayer.Character:WaitForChild("Humanoid")
+    humanoid.Died:Connect(function()
+        localPlayer.CharacterAdded:Wait()
+        humanoid = localPlayer.Character:WaitForChild("Humanoid")
+    end)
     local humanoidRootPart = localPlayer.Character:WaitForChild("HumanoidRootPart")
+    local defaultWalkspeed = humanoid.WalkSpeed
 
      -- AIMBOT VARIABLES
     local AIMBOT_ON = false
@@ -41,6 +46,8 @@ local MarketplaceService = game:GetService("MarketplaceService")
     local aiming = false
     local target = nil
     local fovCircle = nil
+
+    local RAGEAIM_ON = false
 
     -- ESP VARIABLES
     local BOX_ESP_COLOR = Color3.fromRGB(255, 255, 255)
@@ -61,6 +68,8 @@ local MarketplaceService = game:GetService("MarketplaceService")
 
     -- FLIGHT VARIABLES
     local SFLY_ON = false
+    local FLY_ON = false
+    local FLY_SPEED = 50
 
     -- SPINBOT VARIABLES
     local horizSpinConnection
@@ -76,21 +85,42 @@ local MarketplaceService = game:GetService("MarketplaceService")
     -- RAGDOLL VARIABLES
     local RAGDOLL_ON = false
 
+    -- WALKSPEED VARIABLES
+    local IS_MODIFYING = false
+    local WALKSPEED = defaultWalkspeed
+
 -- INITIALIZE FUNCTIONS
 
 function getClosestPlayer()
     local closest = nil
-    local shortestDistance = math.huge
-    local mousePos = UserInputService:GetMouseLocation()
+    if RAGEAIM_ON == false then
+        local shortestDistance = math.huge
+        local mousePos = UserInputService:GetMouseLocation()
 
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= localPlayer and player.Character and player.Character:FindFirstChild("Head") then
-            local screenPos, onScreen = camera:WorldToScreenPoint(player.Character.Head.Position)
-            if onScreen then
-                local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-                if distance < shortestDistance and distance <= AIMBOT_FOV then
-                    closest = player
-                    shortestDistance = distance
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= localPlayer and player.Character and player.Character:FindFirstChild("Head") then
+                local screenPos, onScreen = camera:WorldToScreenPoint(player.Character.Head.Position)
+                if onScreen then
+                    local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                    if distance < shortestDistance and distance <= AIMBOT_FOV then
+                        closest = player
+                        shortestDistance = distance
+                    end
+                end
+            end
+        end
+    else
+        local shortestDistance = math.huge
+        local localPlayerPosition = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") and localPlayer.Character.HumanoidRootPart.Position
+
+        if localPlayerPosition then
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= localPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    local distance = (player.Character.HumanoidRootPart.Position - localPlayerPosition).Magnitude
+                    if distance < shortestDistance then
+                        closest = player
+                        shortestDistance = distance
+                    end
                 end
             end
         end
@@ -98,6 +128,7 @@ function getClosestPlayer()
 
     return closest
 end
+
 
     local function createBone()
         local bone = Drawing.new("Line")
@@ -446,6 +477,79 @@ end
         humanoidRootPart.Velocity = moveDirection * 50
     end
 
+    local flyForce
+    local conn
+
+    local originalGravity = workspace.Gravity
+
+    local function startFlying()
+        if flyForce then return end
+        
+        workspace.Gravity = 0
+        
+        flyForce = Instance.new("BodyVelocity")
+        flyForce.Velocity = Vector3.new(0, 0, 0)
+        flyForce.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        flyForce.Parent = humanoidRootPart
+        
+        humanoid:ChangeState(Enum.HumanoidStateType.Flying)
+        
+        conn = RunService.Heartbeat:Connect(function()
+            local camera = workspace.CurrentCamera
+            local lookVector = camera.CFrame.LookVector
+            local rightVector = camera.CFrame.RightVector
+            
+            local moveDirection = Vector3.new(0, 0, 0)
+            
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+                moveDirection = moveDirection + lookVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+                moveDirection = moveDirection - lookVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+                moveDirection = moveDirection - rightVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+                moveDirection = moveDirection + rightVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                moveDirection = moveDirection + Vector3.new(0, 1, 0)
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+                moveDirection = moveDirection - Vector3.new(0, 1, 0)
+            end
+            
+            if moveDirection.Magnitude > 0 then
+                flyForce.Velocity = moveDirection.Unit * FLY_SPEED
+            else
+                flyForce.Velocity = Vector3.new(0, 0, 0)
+            end
+            
+        end)
+    end
+
+    local function stopFlying()
+        if flyForce then
+            flyForce:Destroy()
+            flyForce = nil
+        end
+        
+        if conn then
+            conn:Disconnect()
+            conn = nil
+        end
+        
+        workspace.Gravity = originalGravity
+        
+        for _, child in pairs(humanoidRootPart:GetChildren()) do
+            if child:IsA("BodyGyro") then
+                child:Destroy()
+            end
+        end
+        
+        humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+    end
 
 -- INITIALIZE RAYFIELD
 
@@ -503,6 +607,14 @@ local TabMisc = Window:CreateTab("Miscellaneous", 7733954760)
         Callback = function(Value)
             AIMBOT_SMOOTHING = Value
         end,
+    })
+
+    TabAimbot:CreateToggle({
+        Name = "Rageaim Enabled",
+        CurrentValue = false,
+        Callback = function(Value)
+            RAGEAIM_ON = Value
+        end
     })
 
     TabAimbot:CreateSection("Appearance")    
@@ -628,7 +740,28 @@ local TabMisc = Window:CreateTab("Miscellaneous", 7733954760)
     -- MOVEMENT ELEMENTS
     TabMovement:CreateSection("Flight")
     TabMovement:CreateToggle({
-        Name = "Swim Fly",
+        Name = "Fly Enabled",
+        CurrentValue = false,
+        Callback = function(Value)
+            FLY_ON = Value
+            if FLY_ON == true then
+                startFlying()
+            else
+                stopFlying()
+            end
+        end
+    })
+    TabMovement:CreateSlider({
+        Name = "Flight Speed",
+        Range = {0, 150},
+        Increment = 1,
+        CurrentValue = 50,
+        Callback = function(Value)
+            FLY_SPEED = Value
+        end,
+    })
+    TabMovement:CreateToggle({
+        Name = "Swim Fly Enabled",
         CurrentValue = false,
         Callback = function(Value)
             SFLY_ON = Value
@@ -719,6 +852,35 @@ local TabMisc = Window:CreateTab("Miscellaneous", 7733954760)
         Callback = function(Value)
             BHOP_ON = Value
         end
+    })
+
+    TabMovement:CreateSection("Walkspeed Modifier")
+
+    TabMovement:CreateToggle({
+        Name = "Modify Speed",
+        CurrentValue = false,
+        Callback = function(Value)
+            if Value == true then
+                IS_MODIFYING = true
+                humanoid.WalkSpeed = WALKSPEED
+            else
+                IS_MODIFYING = false
+                humanoid.WalkSpeed = defaultWalkspeed
+            end
+        end
+    })
+
+    TabMovement:CreateSlider({
+        Name = "Walkspeed",
+        Range = {0, 250},
+        Increment = 1,
+        CurrentValue = 30,
+        Callback = function(Value)
+            WALKSPEED = Value
+            if IS_MODIFYING then
+                humanoid.WalkSpeed = Value
+            end
+        end,
     })
 
     -- MISC ELEMENTS

@@ -2,7 +2,7 @@
 
 print("Loading Aceware...")
 
-local ACEWARE_VERSION_NUMBER = "1.2.0"
+local ACEWARE_VERSION_NUMBER = "1.3.0"
 local ACEWARE_VERSION_VNUM = "v" .. ACEWARE_VERSION_NUMBER
 local ACEWARE_VERSION_LONG = "version " .. ACEWARE_VERSION_NUMBER
 
@@ -565,7 +565,8 @@ local TabInfo = Window:CreateTab("Information", 7733964719)
 local TabAimbot = Window:CreateTab("Aimbot", 7733765307)
 local TabESP = Window:CreateTab("ESP", 7733774602)
 local TabMovement = Window:CreateTab("Movement", 7743870731)
-local TabMisc = Window:CreateTab("Miscellaneous", 7733954760)
+local TabMisc = Window:CreateTab("Miscellaneous", 7733993147)
+local TabScriptHub = Window:CreateTab("Script Hub", 7733954760)
 
 -- ELEMENTS
 
@@ -963,6 +964,45 @@ local TabMisc = Window:CreateTab("Miscellaneous", 7733954760)
         })
     end
 })
+    TabScriptHub:CreateSection("Infinite Yield")
+    TabScriptHub:CreateParagraph({
+        Title = "Infinite Yield by Edge",
+        Content = "Infinite Yield is a popular Roblox script that provides users with a range of commands. It allows users to fly, noclip, and more."
+    })
+    TabScriptHub:CreateButton({
+        Name = "Execute",
+        Callback = function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+        end
+    })
+
+    TabScriptHub:CreateSection("Orca")
+    TabScriptHub:CreateParagraph({
+        Title = "Orca by richie0866",
+        Content = "Orca is a beautiful general-purpose script hub that provides users with both scripts and toggles for things like flight, walkspeed, and jump height."
+    })
+    TabScriptHub:CreateButton({
+        Name = "Execute",
+        Callback = function()
+            loadstring(
+                game:HttpGetAsync("https://raw.githubusercontent.com/richie0866/orca/master/public/latest.lua")
+            )()
+        end
+    })
+
+    TabScriptHub:CreateSection("Dex Explorer")
+    TabScriptHub:CreateParagraph({
+        Title = "Dex by LorekeeperZinnia",
+        Content = "Dex is a popular tool that allows users to view and manipulate objects, scripts, and properties."
+    })
+    TabScriptHub:CreateButton({
+        Name = "Execute",
+        Callback = function()
+            loadstring(
+                loadstring(game:GetObjects("rbxassetid://418957341")[1].Source)()
+            )()
+        end
+    })
 
 -- CONNECT FUNCTIONS TO SERVICES
 

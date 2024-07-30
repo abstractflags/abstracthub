@@ -2,13 +2,13 @@
 
 print("Loading Aceware...")
 
-local ACEWARE_VERSION_NUMBER = "1.4.0"
+local ACEWARE_VERSION_NUMBER = "1.5.0"
 local ACEWARE_VERSION_VNUM = "v" .. ACEWARE_VERSION_NUMBER
 local ACEWARE_VERSION_LONG = "version " .. ACEWARE_VERSION_NUMBER
 
-print("ACEWARE_VERSION_NUMBER: " .. ACEWARE_VERSION_NUMBER)
-print("ACEWARE_VERSION_VNUM:   " .. ACEWARE_VERSION_VNUM)
-print("ACEWARE_VERSION_LONG:   " .. ACEWARE_VERSION_LONG)
+print("Aceware Version: " .. ACEWARE_VERSION_NUMBER)
+print("Aceware Version 'vX.X.X':   " .. ACEWARE_VERSION_VNUM)
+print("Aceware Version 'version X.X.X':   " .. ACEWARE_VERSION_LONG)
 
 -- INITIALIZE SERVICES AND LIBRARIES
 
@@ -17,6 +17,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
+local Lighting = game:GetService("Lighting")
 
 -- INITIALIZE VARIABLES
     -- NAMING CONVENTION
@@ -92,6 +93,10 @@ local MarketplaceService = game:GetService("MarketplaceService")
     -- CAMLOCK VARIABLES
     local isLocked = false
     local CAMLOCK_ON = false
+
+    -- COLOR FILTER VARIABLES
+    local COLOR_FILTER_COLOR = Color3.fromRGB(255, 0, 255)
+    local COLOR_FILTER_INTENSITY = 50
 
 -- INITIALIZE FUNCTIONS
 
@@ -601,6 +606,24 @@ local MarketplaceService = game:GetService("MarketplaceService")
         humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
     end
 
+    local function RemoveColorFilter()
+        local existingFilter = Lighting:FindFirstChild("CustomColorFilter")
+        if existingFilter then
+            existingFilter:Destroy()
+        end
+    end
+
+    local function ApplyColorFilter(color, intensity)
+        RemoveColorFilter()
+
+        local scale = intensity / 100
+        local adjustedColor = Color3.new(color.R * scale, color.G * scale, color.B * scale)
+
+        local colorCorrection = Instance.new("ColorCorrectionEffect")
+        colorCorrection.Name = "CustomColorFilter"
+        colorCorrection.TintColor = adjustedColor
+        colorCorrection.Parent = Lighting
+    end
 -- INITIALIZE RAYFIELD
 
 local Window = Rayfield:CreateWindow({
@@ -1033,6 +1056,40 @@ local TabScriptHub = Window:CreateTab("Script Hub", 7733954760)
         end
     })
 
+    TabMisc:CreateSection("Color Filter")
+    TabMisc:CreateToggle({
+        Name = "Enable Color Filters",
+        CurrentValue = false,
+        Callback = function(Value)
+            if Value == true then
+                ApplyColorFilter(COLOR_FILTER_COLOR, COLOR_FILTER_INTENSITY)
+            else
+                RemoveColorFilter()
+            end
+        end
+    })
+    TabMisc:CreateColorPicker({
+        Name = "Color",
+        Color = Color3.fromRGB(255, 0, 255),
+        Callback = function(Value)
+            COLOR_FILTER_COLOR = Value
+            RemoveColorFilter()
+            ApplyColorFilter(COLOR_FILTER_COLOR, COLOR_FILTER_INTENSITY)
+        end
+    })
+    TabMisc:CreateSlider({
+        Name = "Brightness",
+        Range = {0, 100},
+        Increment = 1,
+        Suffix = "%",
+        CurrentValue = 50,
+        Callback = function(Value)
+            COLOR_FILTER_INTENSITY = Value
+            RemoveColorFilter()
+            ApplyColorFilter(COLOR_FILTER_COLOR, COLOR_FILTER_INTENSITY)
+        end
+    })
+
     TabScriptHub:CreateSection("Infinite Yield")
     TabScriptHub:CreateParagraph({
         Title = "Infinite Yield by Edge",
@@ -1069,6 +1126,20 @@ local TabScriptHub = Window:CreateTab("Script Hub", 7733954760)
         Callback = function()
             loadstring(
                 loadstring(game:GetObjects("rbxassetid://418957341")[1].Source)()
+            )()
+        end
+    })
+
+    TabScriptHub:CreateSection("VG Hub")
+    TabScriptHub:CreateParagraph({
+        Title = "VG Hub by 1201for",
+        Content = "VG Hub is a script hub that provides game-specific cheats for over 140 games."
+    })
+    TabScriptHub:CreateButton({
+        Name = "Execute",
+        Callback = function()
+            loadstring(
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/1201for/V.G-Hub/main/V.Ghub"))()
             )()
         end
     })

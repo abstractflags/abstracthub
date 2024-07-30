@@ -2,7 +2,7 @@
 
 print("Loading Aceware...")
 
-local ACEWARE_VERSION_NUMBER = "1.3.0"
+local ACEWARE_VERSION_NUMBER = "1.4.0"
 local ACEWARE_VERSION_VNUM = "v" .. ACEWARE_VERSION_NUMBER
 local ACEWARE_VERSION_LONG = "version " .. ACEWARE_VERSION_NUMBER
 
@@ -89,33 +89,58 @@ local MarketplaceService = game:GetService("MarketplaceService")
     local IS_MODIFYING = false
     local WALKSPEED = defaultWalkspeed
 
+    -- CAMLOCK VARIABLES
+    local isLocked = false
+    local CAMLOCK_ON = false
+
 -- INITIALIZE FUNCTIONS
 
-function getClosestPlayer()
-    local closest = nil
-    if RAGEAIM_ON == false then
-        local shortestDistance = math.huge
-        local mousePos = UserInputService:GetMouseLocation()
+    function getClosestPlayer()
+        local closest = nil
+        if RAGEAIM_ON == false then
+            local shortestDistance = math.huge
+            local mousePos = UserInputService:GetMouseLocation()
 
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= localPlayer and player.Character and player.Character:FindFirstChild("Head") then
-                local screenPos, onScreen = camera:WorldToScreenPoint(player.Character.Head.Position)
-                if onScreen then
-                    local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-                    if distance < shortestDistance and distance <= AIMBOT_FOV then
-                        closest = player
-                        shortestDistance = distance
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= localPlayer and player.Character and player.Character:FindFirstChild("Head") then
+                    local screenPos, onScreen = camera:WorldToScreenPoint(player.Character.Head.Position)
+                    if onScreen then
+                        local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                        if distance < shortestDistance and distance <= AIMBOT_FOV then
+                            closest = player
+                            shortestDistance = distance
+                        end
+                    end
+                end
+            end
+        else
+            local shortestDistance = math.huge
+            local localPlayerPosition = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") and localPlayer.Character.HumanoidRootPart.Position
+
+            if localPlayerPosition then
+                for _, player in pairs(Players:GetPlayers()) do
+                    if player ~= localPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                        local distance = (player.Character.HumanoidRootPart.Position - localPlayerPosition).Magnitude
+                        if distance < shortestDistance then
+                            closest = player
+                            shortestDistance = distance
+                        end
                     end
                 end
             end
         end
-    else
+
+        return closest
+    end
+
+    function getClosestAlivePlayerIn3DSpace()
+        local closest = nil
         local shortestDistance = math.huge
         local localPlayerPosition = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") and localPlayer.Character.HumanoidRootPart.Position
 
         if localPlayerPosition then
             for _, player in pairs(Players:GetPlayers()) do
-                if player ~= localPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                if player ~= localPlayer and isPlayerAlive(player) and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
                     local distance = (player.Character.HumanoidRootPart.Position - localPlayerPosition).Magnitude
                     if distance < shortestDistance then
                         closest = player
@@ -124,10 +149,35 @@ function getClosestPlayer()
                 end
             end
         end
+        return closest
     end
 
-    return closest
-end
+    function isPlayerAlive(player)
+        return player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0
+    end
+
+
+    local function lockCameraToNearestAlivePlayerHead()
+        local nearestPlayer = getClosestAlivePlayerIn3DSpace()
+        if nearestPlayer and nearestPlayer.Character and nearestPlayer.Character:FindFirstChild("Head") then
+            local targetPosition = nearestPlayer.Character.Head.Position
+            camera.CFrame = CFrame.new(camera.CFrame.Position, targetPosition)
+        end
+    end
+
+    local function toggleCameraLock()
+        if CAMLOCK_ON then
+            isLocked = not isLocked
+            if isLocked then
+                camera.CameraType = Enum.CameraType.Scriptable
+                RunService:BindToRenderStep("LockCamera", Enum.RenderPriority.Camera.Value, lockCameraToNearestAlivePlayerHead)
+            else
+                RunService:UnbindFromRenderStep("LockCamera")
+                camera.CameraType = Enum.CameraType.Custom
+            end
+        end
+    end
+
 
 
     local function createBone()
@@ -964,6 +1014,25 @@ local TabScriptHub = Window:CreateTab("Script Hub", 7733954760)
         })
     end
 })
+
+    TabMisc:CreateSection("Camera Lock")
+    TabMisc:CreateParagraph({ Title="Instructions", Content="Enable with the toggle, then use the keybind to use and stop using. It will lock to the nearest player."} )
+    TabMisc:CreateToggle({
+        Name = "Enable Camera Lock",
+        CurrentValue = false,
+        Callback = function(Value)
+            CAMLOCK_ON = Value
+        end
+    })
+    TabMisc:CreateKeybind({
+        Name = "Camera Lock Toggle Keybind",
+        CurrentKeybind = "H",
+        HoldToInteract = false,
+        Callback = function()
+            toggleCameraLock()
+        end
+    })
+
     TabScriptHub:CreateSection("Infinite Yield")
     TabScriptHub:CreateParagraph({
         Title = "Infinite Yield by Edge",
